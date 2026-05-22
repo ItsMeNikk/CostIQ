@@ -1,0 +1,84 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-geist-mono);
+}
+
+:root {
+  --background: #C5D0D8;
+  --foreground: #04080F;
+  --brand-bg: #C5D0D8;
+  --brand-dark: #04080F;
+  --brand-primary: #4A70B0;
+  --brand-light: #8BB4DC;
+  --brand-soft: #A8BDE0;
+  --brand-deep: #3E5F96;
+  --brand-accent: #6B91C4;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  overflow-x: hidden;
+  width: 100%;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-inter), system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100%;
+}
+
+::selection {
+  background: rgba(74, 112, 176, 0.25);
+  color: #04080F;
+}
+
+/* Subtle grid background */
+.grid-bg {
+  background-image:
+    linear-gradient(rgba(74, 112, 176, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(74, 112, 176, 0.035) 1px, transparent 1px);
+  background-size: 60px 60px;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(74, 112, 176, 0.3);
+  border-radius: 999px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(74, 112, 176, 0.5);
+}
+
+/* Focus visible styles */
+:focus-visible {
+  outline: 2px solid rgba(74, 112, 176, 0.6);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+/* Animated gradient glow for hero headline */
+@keyframes glowPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.08); }
+}
