@@ -30,12 +30,12 @@ export default function Footer() {
   const inView = useInView(ref, { once: true, margin: "-50px" });
 
   return (
-    <footer className="bg-[#1E2A3A] pt-16 pb-10">
+    <footer className="bg-[#1E2A3A] pt-16 pb-10 w-full overflow-hidden">
       <div className="max-w-6xl mx-auto px-6">
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           {/* Brand column */}
           <div className="col-span-2">
-            <a href="#" className="flex items-center gap-2.5 mb-4 -ml-1">
+            <a href="/" className="flex items-center gap-2.5 mb-4 -ml-1">
               <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] flex items-center justify-center shadow-btn-primary">
                 <span className="text-white font-bold text-sm tracking-tight">$</span>
               </div>

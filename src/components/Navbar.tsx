@@ -31,7 +31,7 @@ export default function Navbar() {
 
   return (
     <header
-      className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      className={`fixed top-0 left-0 right-0 z-50 w-full max-w-[100vw] transition-all duration-300 ${
         scrolled
           ? "bg-white/85 backdrop-blur-2xl border-b border-[#A8BDE0]/30 shadow-soft-md"
           : "bg-white/60 backdrop-blur-md"
@@ -39,7 +39,7 @@ export default function Navbar() {
     >
       <nav className="max-w-5xl mx-auto px-5 sm:px-8 h-[60px] sm:h-[68px] flex items-center justify-between">
         {/* Logo */}
-        <a href="#" className="flex items-center gap-2 group -ml-1">
+        <a href="/" className="flex items-center gap-2 group -ml-1">
           <div
             className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] flex items-center justify-center shadow-btn-primary group-hover:shadow-btn-primary-hover group-hover:scale-105 transition-all duration-200"
           >
@@ -65,13 +65,7 @@ export default function Navbar() {
         {/* CTA buttons */}
         <div className="hidden md:flex items-center gap-2">
           <a
-            href="#"
-            className="text-[12px] sm:text-[13px] font-medium text-[#04080F]/50 hover:text-[#4A70B0] tracking-wide transition-colors duration-200 px-2 sm:px-3 py-1.5"
-          >
-            Sign in
-          </a>
-          <a
-            href="#cta"
+            href="/audit"
             className="text-[12px] sm:text-[13px] font-semibold tracking-wide bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-btn-primary hover:shadow-btn-primary-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
           >
             Get started free
@@ -122,15 +116,9 @@ export default function Navbar() {
                   {link.label}
                 </a>
               ))}
-              <div className="pt-4 mt-3 border-t border-[#A8BDE0]/30 flex flex-col gap-2.5">
+              <div className="pt-4 mt-3 border-t border-[#A8BDE0]/30">
                 <a
-                  href="#"
-                  className="text-[14px] font-medium text-[#04080F]/50 hover:text-[#4A70B0] transition-colors py-2 block"
-                >
-                  Sign in
-                </a>
-                <a
-                  href="#cta"
+                  href="/audit"
                   onClick={() => setMobileOpen(false)}
                   className="text-[14px] font-semibold bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] text-white px-5 py-3 rounded-xl block text-center shadow-btn-primary"
                 >

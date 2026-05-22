@@ -25,7 +25,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={plusJakarta.variable}>
-      <body className="min-h-screen antialiased">{children}</body>
+      <body className="min-h-screen w-full overflow-x-hidden antialiased bg-[#C5D0D8]">{children}</body>
     </html>
   );
 }

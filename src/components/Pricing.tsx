@@ -2,13 +2,14 @@
 
 import { motion, useInView } from "framer-motion";
 import { useRef } from "react";
+import { SALES_EMAIL, STARTER_FOOTNOTE, STARTER_SPEND_LIMIT } from "@/lib/marketing-copy";
 
 const plans = [
   {
     name: "Starter",
     price: "Free",
     period: "",
-    description: "Run your first audit, see where you stand. No card, no commitment.",
+    description: `Run your first audit for teams with ${STARTER_SPEND_LIMIT}. No card, no commitment.`,
     features: [
       "Unlimited AI tools",
       "Single team audit",
@@ -18,13 +19,14 @@ const plans = [
       "AI summary",
     ],
     cta: "Start free audit",
+    href: "/audit",
     highlight: true,
   },
   {
     name: "Pro",
     price: "Custom",
     period: "",
-    description: "For growing teams with complex AI stacks and multiple audits.",
+    description: "Custom pricing for teams above the Starter spend limit or needing multiple audits.",
     features: [
       "Everything in Starter",
       "Multiple team audits",
@@ -34,6 +36,7 @@ const plans = [
       "Slack / email alerts",
     ],
     cta: "Get in touch",
+    href: `mailto:${SALES_EMAIL}?subject=CostIQ%20Pro`,
     highlight: false,
   },
 ];
@@ -43,7 +46,7 @@ export default function Pricing() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section id="pricing" className="py-16 sm:py-20 md:py-28 relative">
+    <section id="pricing" className="py-16 sm:py-20 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-white" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#C5D0D8]/40 to-[#C5D0D8]" />
 
@@ -71,9 +74,9 @@ export default function Pricing() {
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/55 max-w-xl mx-auto font-light px-2"
+            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/70 max-w-xl mx-auto font-medium px-2"
           >
-            One audit. Real insights. No subscription required to see your numbers.
+            One audit. Real insights. No subscription needed to see your numbers.
           </motion.p>
         </div>
 
@@ -133,7 +136,7 @@ export default function Pricing() {
               </ul>
 
               <a
-                href="#cta"
+                href={plan.href}
                 className={`block text-center text-[13px] font-semibold tracking-wide px-5 py-3 rounded-xl transition-all duration-200 hover:-translate-y-0.5 ${
                   plan.highlight
                     ? "bg-white text-[#4A70B0] hover:shadow-lg active:translate-y-0"
@@ -152,7 +155,7 @@ export default function Pricing() {
           transition={{ duration: 0.4, delay: 0.6 }}
           className="text-center text-[12px] sm:text-[13px] text-[#04080F]/50 mt-8"
         >
-          Starter is free forever. No credit card required.
+          {STARTER_FOOTNOTE}
         </motion.p>
       </div>
     </section>

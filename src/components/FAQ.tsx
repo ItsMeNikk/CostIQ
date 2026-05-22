@@ -2,35 +2,36 @@
 
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { useRef, useState } from "react";
+import { FAQ_PRICING_ANSWER, SALES_EMAIL } from "@/lib/marketing-copy";
 
 const faqs = [
   {
     q: "How does the audit work?",
-    a: "You tell us which AI tools your team uses, your current plans, and monthly spend. Our engine benchmarks that against current pricing, available plans, and optimization opportunities to generate a personalized report — no API access needed.",
+    a: "Tell us which AI tools your team uses, your current plans, and monthly spend. Our engine benchmarks everything against current pricing and generates a personalized report — no API access needed.",
   },
   {
     q: "What AI tools do you cover?",
-    a: "We cover all major consumer and developer AI tools: ChatGPT, Claude, Cursor, GitHub Copilot, Gemini, Gemini Advanced, Midjourney, DALL-E, Replicate, Vercel AI, and more. If your tool isn't on the list, add it as a custom entry and we'll include it in the analysis.",
+    a: "All major consumer and developer AI tools: ChatGPT, Claude, Cursor, Copilot, Gemini, Midjourney, DALL-E, Replicate, Vercel AI, and more. Add custom tools and we'll include them in the analysis.",
   },
   {
     q: "Is my data kept private?",
-    a: "Yes. We never require API access and don't store your prompts, conversations, or proprietary data. We only process the plan and spend information you explicitly provide. Nothing leaves our infrastructure except the audit report you request.",
+    a: "Yes. We never require API access and don't store your prompts or conversations. We only process the plan and spend info you explicitly provide.",
   },
   {
     q: "How accurate are the savings estimates?",
-    a: "The estimates are based on real, current pricing from each provider's public pricing page. When you confirm your actual plan and spend, we adjust estimates accordingly. Most teams find the savings projection is within 10–15% of the actual achievable savings.",
+    a: "Estimates are based on real, current pricing from each provider's public page. Most teams find their actual achievable savings fall within 10–15% of the projection.",
   },
   {
     q: "How is this different from a spreadsheet?",
-    a: "A spreadsheet requires you to know what to look for. CostIQ identifies redundancies, plan mismatches, and pricing errors you didn't know existed — and gives you specific, ranked actions rather than raw numbers.",
+    a: "A spreadsheet requires you to know what to look for. CostIQ identifies redundancies, plan mismatches, and pricing errors you didn't know existed — and gives ranked, actionable steps.",
   },
   {
     q: "Can I export or share the report?",
-    a: "Every audit generates a shareable link and a PDF export. You can share the link with your team, finance, or leadership without requiring them to create an account. Reports are useful for budget planning, team planning, or just understanding where the AI money goes.",
+    a: "Every audit generates a shareable link and a PDF export. Share with your team, finance, or leadership — no account required.",
   },
   {
     q: "Is there a free plan?",
-    a: "The Starter plan covers audits for up to $500/mo in AI spend, free. Pro ($49/mo) covers unlimited spend, team seats, and priority support. Enterprise includes custom branding, API access for bulk audits, and dedicated onboarding.",
+    a: FAQ_PRICING_ANSWER,
   },
 ];
 
@@ -40,7 +41,7 @@ export default function FAQ() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-16 sm:py-20 md:py-28 relative">
+    <section className="py-16 sm:py-20 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-white" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#C5D0D8]/30 to-[#C5D0D8]" />
 
@@ -70,8 +71,8 @@ export default function FAQ() {
             className="text-[14px] sm:text-[15px] text-[#04080F]/60 font-light"
           >
             Anything else? Email us at{" "}
-            <a href="mailto:hello@costiq.io" className="text-[#4A70B0] hover:underline font-medium">
-              hello@costiq.io
+            <a href={`mailto:${SALES_EMAIL}`} className="text-[#4A70B0] hover:underline font-medium">
+              {SALES_EMAIL}
             </a>
           </motion.p>
         </div>
@@ -109,7 +110,7 @@ export default function FAQ() {
                     transition={{ duration: 0.25, ease: "easeInOut" }}
                     className="overflow-hidden"
                   >
-                    <p className="px-4 sm:px-5.5 pb-4 sm:pb-5.5 text-[12px] sm:text-[13px] text-[#04080F]/55 leading-relaxed font-light">
+                    <p className="px-4 sm:px-5.5 pb-4 sm:pb-5.5 text-[12px] sm:text-[13px] text-[#04080F] font-medium leading-relaxed">
                       {faq.a}
                     </p>
                   </motion.div>

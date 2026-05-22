@@ -5,7 +5,7 @@ import { useRef } from "react";
 
 const testimonials = [
   {
-    quote: "We were burning through $12k/month on AI tools without realizing it. CostIQ showed us we could get the same output from cheaper tiers on half of them. Paid for itself in the first audit.",
+    quote: "We were burning $12k/month on AI tools without realizing it. CostIQ showed us we could get the same output from cheaper tiers on half of them. Paid for itself in the first audit.",
     author: "Yuki Tanaka",
     role: "CTO",
     company: "Relay AI",
@@ -15,7 +15,7 @@ const testimonials = [
     color: "#4A70B0",
   },
   {
-    quote: "Our finance team kept asking where the AI budget was going. CostIQ gave them a report they could actually understand, and engineering concrete actions — not just a spreadsheet.",
+    quote: "Our finance team kept asking where the AI budget was going. CostIQ gave them a report they could actually understand — and engineering concrete actions, not just a spreadsheet.",
     author: "Priya Sharma",
     role: "Head of Product",
     company: "Stackline",
@@ -25,7 +25,7 @@ const testimonials = [
     color: "#8BB4DC",
   },
   {
-    quote: "The recommendations are specific. 'Switch this team from Pro to Team plan' — not 'consider exploring alternative options.' That's the difference between a real tool and a generic advisory.",
+    quote: "The recommendations are specific. 'Switch from Pro to Team plan' — not 'consider exploring alternatives.' That's the difference between a real tool and a generic advisory.",
     author: "Felix Wagner",
     role: "Lead Engineer",
     company: "Orbit Analytics",
@@ -48,7 +48,7 @@ export default function Testimonials() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-16 sm:py-20 md:py-28 relative">
+    <section className="py-16 sm:py-20 md:py-28 relative overflow-hidden">
       <div className="absolute inset-0 bg-[#C5D0D8]" />
       <div className="absolute inset-0 bg-gradient-to-b from-[#B8C4CE]/50 to-[#B8C4CE]" />
 
@@ -95,7 +95,7 @@ export default function Testimonials() {
                 </span>
               </div>
 
-              <blockquote className="text-[13px] sm:text-[14px] text-[#04080F]/75 leading-relaxed mb-5 flex-1 font-light">
+              <blockquote className="text-[13px] sm:text-[14px] text-[#04080F] font-medium leading-relaxed mb-5 flex-1">
                 &ldquo;{t.quote}&rdquo;
               </blockquote>
 

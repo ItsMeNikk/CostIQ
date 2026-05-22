@@ -8,7 +8,7 @@ const steps = [
     number: "01",
     label: "Add your stack",
     title: "Tell us about your AI setup",
-    description: "Select the AI tools your team uses — ChatGPT, Claude, Cursor, Copilot, Gemini, and more. Enter your current plan, monthly spend, and team size. We estimate based on typical startup usage if exact numbers aren't available.",
+    description: "Select every AI tool your team uses. Enter your plan, monthly spend, and team size.",
     detail: "Covers all major AI tools",
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" />,
   },
@@ -16,7 +16,7 @@ const steps = [
     number: "02",
     label: "Audit",
     title: "CostIQ analyzes your spend",
-    description: "Our audit engine reviews your setup against current pricing across plans, identifies redundancies, flags overpriced tiers, and surfaces cheaper alternatives with equivalent or better capabilities for your use case.",
+    description: "Our engine benchmarks your setup, finds redundancies, and surfaces cheaper alternatives.",
     detail: "Real data, not guesswork",
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12zm0 3h.008v.008H6.75V15zm0 3h.008v.008H6.75V18z" />,
   },
@@ -24,7 +24,7 @@ const steps = [
     number: "03",
     label: "Get your report",
     title: "Receive a personalized audit",
-    description: "Get a clean, shareable report with your optimization score, per-tool savings breakdown, monthly vs annual projections, and a plain-English AI summary of the biggest opportunities for your team.",
+    description: "Get your optimization score, per-tool savings, and a plain-English AI summary.",
     detail: "Shareable in one click",
     icon: <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />,
   },
@@ -63,14 +63,14 @@ export default function HowItWorks() {
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/60 max-w-lg mx-auto font-light px-2"
+            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/70 font-medium max-w-lg mx-auto px-2"
           >
-            Add your stack, get an audit. That's it. No API keys, no integration, no waiting.
+            Add your stack, get an audit. No API keys, no integration, no waiting.
           </motion.p>
         </div>
 
         {/* Steps */}
-        <div className="grid sm:grid-cols-3 gap-5 sm:gap-4 md:gap-6">
+        <div className="grid sm:grid-cols-3 gap-5 sm:gap-4 md:gap-6 overflow-hidden">
           {steps.map((step, i) => (
             <motion.div
               key={step.number}
@@ -81,7 +81,7 @@ export default function HowItWorks() {
             >
               {/* Connector between steps */}
               {i < steps.length - 1 && (
-                <div className="hidden md:flex absolute top-10 z-10 items-center right-[-1.5rem] w-[3rem]">
+                <div className="hidden md:flex absolute top-10 z-10 items-center right-0 w-8 translate-x-1/2 pointer-events-none">
                   <motion.div
                     initial={{ scaleX: 0 }}
                     animate={inView ? { scaleX: 1 } : {}}
@@ -112,7 +112,7 @@ export default function HowItWorks() {
                 </div>
 
                 <h3 className="text-[16px] sm:text-[18px] md:text-[20px] font-semibold text-[#04080F] mb-2.5 tracking-tight leading-tight">{step.title}</h3>
-                <p className="text-[13px] sm:text-[14px] text-[#04080F]/55 leading-relaxed mb-5 font-light">{step.description}</p>
+                <p className="text-[13px] sm:text-[14px] text-[#04080F] font-medium leading-relaxed mb-5">{step.description}</p>
 
                 <div className="flex items-center gap-2 mt-auto">
                   <div className="w-1.5 h-1.5 rounded-full bg-[#4A70B0]/30" />

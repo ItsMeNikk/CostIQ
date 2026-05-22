@@ -135,7 +135,7 @@ function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?:
   const gradientId = `areaGrad_${Math.random().toString(36).slice(2)}`;
 
   return (
-    <svg ref={ref as React.Ref<SVGSVGElement>} width={width} height={height} className="overflow-visible">
+    <svg ref={ref as React.Ref<SVGSVGElement>} width={width} height={height} className="max-w-full h-auto overflow-hidden">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#4A70B0" stopOpacity={0.2} />
@@ -248,7 +248,7 @@ export default function Dashboard() {
   const inView = useInView(ref, { once: true, margin: "-80px" });
 
   return (
-    <section id="dashboard" className="relative py-16 sm:py-20 md:py-24">
+    <section id="dashboard" className="relative overflow-hidden py-16 sm:py-20 md:py-24">
       <div className="absolute inset-0 bg-[#C5D0D8]" />
       <div className="absolute inset-0 grid-bg opacity-20" />
       <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-[#8BB4DC]/10 rounded-full blur-3xl" />
@@ -386,18 +386,16 @@ export default function Dashboard() {
                   <div className="flex items-center justify-between mb-4">
                     <div>
                       <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#04080F]">Estimated monthly spend trend</h4>
-                      <div className="flex items-center gap-2 mt-0.5">
+                      <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
                         <span className="text-[11px] text-[#4A70B0] font-semibold">+$1,205 from last year</span>
                         <span className="text-[11px] text-[#04080F]/45">— based on typical startup growth</span>
                       </div>
                     </div>
                   </div>
-                  <div className="overflow-x-auto -mx-1 px-1">
-                    <div className="min-w-[280px]">
-                      <AreaChart data={monthlyTrend} width={Math.min(400, 400)} height={80} />
-                    </div>
+                  <div className="w-full max-w-full overflow-hidden">
+                    <AreaChart data={monthlyTrend} width={320} height={80} />
                   </div>
-                  <div className="flex justify-between mt-2">
+                  <div className="flex flex-wrap justify-between gap-x-1 gap-y-0.5 mt-2">
                     {monthLabels.map((m, i) => (
                       <span key={m} className={`text-[8px] sm:text-[9px] ${i === 11 ? "text-[#4A70B0] font-medium" : "text-[#04080F]/35"}`}>{m}</span>
                     ))}

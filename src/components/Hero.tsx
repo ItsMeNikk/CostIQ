@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import { useRef, useEffect } from "react";
 import Dashboard from "./Dashboard";
+import { HERO_TRUST_LINE } from "@/lib/marketing-copy";
 
 const floatingIcons = [
   { label: "OpenAI", x: "10%", y: "22%", delay: 0 },
@@ -48,7 +49,7 @@ export default function Hero() {
   }, []);
 
   return (
-    <section ref={sectionRef} className="relative overflow-hidden">
+    <section ref={sectionRef} className="relative w-full overflow-hidden">
       {/* Rich layered gradient bg */}
       <div className="absolute inset-0 bg-gradient-to-b from-[#B8C4CE] via-[#C0CACE] to-[#B8C4CE]" />
       <div className="absolute inset-0 grid-bg" />
@@ -56,8 +57,8 @@ export default function Hero() {
       {/* Layered depth orbs — mouse parallax */}
       <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-[#4A70B0]/10 rounded-full blur-[100px] animate-pulse sm:w-[250px] sm:h-[250px] sm:blur-[80px] transition-transform duration-1000 ease-out will-change-transform" style={{ animationDelay: "0s" }} />
       <div ref={orb2Ref} className="absolute bottom-1/3 right-1/4 w-[350px] h-[350px] bg-[#8BB4DC]/15 rounded-full blur-[80px] animate-pulse sm:hidden transition-transform duration-1000 ease-out will-change-transform" style={{ animationDelay: "2s" }} />
-      <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-[900px] h-[600px] bg-gradient-to-b from-[#8BB4DC]/15 via-[#A8BDE0]/10 to-transparent rounded-[0_0_100%_100%] sm:w-[600px] sm:h-[400px]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] bg-[#4A70B0]/5 rounded-full blur-[160px] sm:w-[400px] sm:h-[400px] sm:blur-[100px]" />
+      <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-full max-w-[900px] h-[600px] bg-gradient-to-b from-[#8BB4DC]/15 via-[#A8BDE0]/10 to-transparent rounded-[0_0_100%_100%] sm:max-w-[600px] sm:h-[400px]" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[700px] aspect-square bg-[#4A70B0]/5 rounded-full blur-[160px] sm:max-w-[400px] sm:blur-[100px]" />
 
       {/* Animated gradient glow behind headline */}
       <div
@@ -149,7 +150,7 @@ export default function Hero() {
         >
           {/* Primary CTA */}
           <motion.a
-            href="#cta"
+            href="/audit"
             whileHover={{ y: -3, scale: 1.025 }}
             whileTap={{ scale: 0.975 }}
             className="group relative inline-flex items-center gap-3 sm:gap-3.5 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-semibold text-[14px] sm:text-[15px] tracking-[-0.01em] text-white overflow-hidden w-full sm:w-auto justify-center"
@@ -239,7 +240,7 @@ export default function Hero() {
 
           {/* Supporting detail */}
           <p className="text-[11px] sm:text-[12px] text-[#04080F]/45 tracking-wide text-center px-4">
-            No credit card required · Setup in 2 minutes · Free forever up to $500/mo
+            {HERO_TRUST_LINE}
           </p>
         </motion.div>
       </div>
