@@ -1,1028 +1,1211 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
+import { validateAllTools, type ToolValidation } from "@/lib/audit-validation";
+import { generateReportId, generateShareToken, rememberOwnerToken, reportStorageKey } from "@/lib/share-token";
 
-const TOTAL_STEPS = 4;
+/* ═══════════════════════════════════════════════════════════════════
+   DATA MODEL
+═══════════════════════════════════════════════════════════════════ */
 
-const TEAM_SIZES = [
-  { value: "1-5", label: "1–5" },
-  { value: "6-15", label: "6–15" },
-  { value: "16-50", label: "16–50" },
-  { value: "51-200", label: "51–200" },
-  { value: "200+", label: "200+" },
-];
+interface ToolConfig {
+  plan: string;
+  monthlySpend: number | null;
+  seats: number | null;
+}
 
-const ROLES = [
-  "Software Engineer",
-  "Engineering Manager",
-  "CTO / VP Engineering",
-  "Product Manager",
-  "Founder / CEO",
-  "Designer",
-  "Data Scientist",
-  "DevOps / Platform",
-  "Other",
-];
+interface AuditFormData {
+  companyName: string;
+  teamSize: string;
+  role: string;
+  selectedUseCases: string[];
+  spendRange: string;
+  selectedTools: string[];
+  customTools: string[];
+  billingCycle: string;
+  toolConfigs: Record<string, ToolConfig>;
+  step: number;
+}
 
-const USE_CASES = [
-  { value: "code-generation", label: "Code generation", icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" },
-  { value: "writing-content", label: "Writing & content", icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
-  { value: "research", label: "Research & analysis", icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
-  { value: "customer-support", label: "Customer support", icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" },
-  { value: "data-processing", label: "Data processing", icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" },
-];
+const DEFAULT_FORM: AuditFormData = {
+  companyName: "",
+  teamSize: "",
+  role: "",
+  selectedUseCases: [],
+  spendRange: "",
+  selectedTools: [],
+  customTools: [],
+  billingCycle: "monthly",
+  toolConfigs: {},
+  step: 1,
+};
 
-const SPEND_RANGES = [
-  { value: "0-100", label: "$0–$100", sub: "Just getting started" },
-  { value: "100-500", label: "$100–$500", sub: "Small team" },
-  { value: "500-2k", label: "$500–$2K", sub: "Growing team" },
-  { value: "2k-10k", label: "$2K–$10K", sub: "Scaling" },
-  { value: "10k+", label: "$10K+", sub: "Enterprise" },
-];
+/* ═══════════════════════════════════════════════════════════════════
+   TOOL DEFINITIONS — required 8 tools + extras
+═══════════════════════════════════════════════════════════════════ */
 
-const AI_TOOLS: {
+const TOOL_DEFS: {
   value: string;
   label: string;
   category: string;
   svgPath: string;
   color: string;
 }[] = [
-  { value: "chatgpt", label: "ChatGPT", category: "LLM", svgPath: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z", color: "#10A37F" },
-  { value: "claude", label: "Claude", category: "LLM", svgPath: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c.83 0 1.5.67 1.5 1.5 0 .38-.14.72-.38 1.02L12 9l-1.12 1.52C10.58 7.22 10.5 7.38 10.5 7.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5c0-.38-.14-.72-.38-1.02L12 4l1.12-1.52C13.42 2.78 13.5 2.62 13.5 2.5c0-.83-.67-1.5-1.5-1.5z", color: "#D4A27F" },
-  { value: "cursor", label: "Cursor", category: "IDE", svgPath: "M5.25 4.5l14.25 14.25M5.25 18.75L18.75 4.5", color: "#1a1a1a" },
-  { value: "copilot", label: "GitHub Copilot", category: "Code", svgPath: "M12 2L2 7v10l10 5 10-5V7L12 2zm0 2.18l6.9 3.44L12 11.54 5.1 7.62 12 4.18zM4 16.27V9.09l7 3.5v6.86l-7-3.18zm9 3.18V12.59l7-3.5v7.18l-7 3.18z", color: "#24292F" },
-  { value: "gemini", label: "Gemini", category: "LLM", svgPath: "M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5", color: "#8E75B2" },
-  { value: "openai-api", label: "OpenAI API", category: "API", svgPath: "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z", color: "#10A37F" },
-  { value: "anthropic-api", label: "Anthropic API", category: "API", svgPath: "M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 3c.83 0 1.5.67 1.5 1.5 0 .38-.14.72-.38 1.02L12 9l-1.12 1.52C10.58 7.22 10.5 7.38 10.5 7.5c0 .83.67 1.5 1.5 1.5s1.5-.67 1.5-1.5c0-.38-.14-.72-.38-1.02L12 4l1.12-1.52C13.42 2.78 13.5 2.62 13.5 2.5c0-.83-.67-1.5-1.5-1.5z", color: "#D4A27F" },
-  { value: "azure-openai", label: "Azure OpenAI", category: "Cloud AI", svgPath: "M3.75 13.5l10.5-7.5H3.75v7.5zm13.5 0l-10.5 7.5h10.5v-7.5z", color: "#0078D4" },
-  { value: "aws-bedrock", label: "AWS Bedrock", category: "Cloud AI", svgPath: "M3.75 13.5l10.5-7.5H3.75v7.5zm13.5 0l-10.5 7.5h10.5v-7.5z", color: "#FF9900" },
-  { value: "midjourney", label: "Midjourney", category: "Image", svgPath: "M12 2l-2.4 7.2H2l6 4.8-2.4 7.2L12 17l6.4 4.2L16 14l6-4.8h-7.6L12 2z", color: "#6B6B6B" },
-  { value: "replicate", label: "Replicate", category: "Inference", svgPath: "M12 2L2 7v10l10 5 10-5V7L12 2zm0 3l5 2.5L12 10l-5-2.5L12 5z", color: "#6B91C4" },
+  { value: "cursor",      label: "Cursor",           category: "IDE / AI",        svgPath: "M5.25 4.5l14.25 14.25M5.25 18.75L18.75 4.5",              color: "#1a1a1a" },
+  { value: "copilot",     label: "GitHub Copilot",   category: "Code Completion", svgPath: "M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z", color: "#24292F" },
+  { value: "claude",      label: "Claude",           category: "LLM / Chat",       svgPath: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", color: "#C97E4A" },
+  { value: "chatgpt",     label: "ChatGPT",          category: "LLM / Chat",       svgPath: "M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z", color: "#10A37F" },
+  { value: "anthropic-api", label: "Anthropic API",  category: "API Access",       svgPath: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4",                color: "#C97E4A" },
+  { value: "openai-api",  label: "OpenAI API",        category: "API Access",       svgPath: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4",                color: "#10A37F" },
+  { value: "gemini",      label: "Gemini",            category: "LLM / Chat",       svgPath: "M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5m0 0L2.25 12.105a2.25 2.25 0 00-.659 1.591v5.286m10.5-1.504L19.75 14.5m0 0L16.5 12.105a2.25 2.25 0 00-.659-1.591V6.5m0 0L14.75 9.5", color: "#8E75B2" },
+  { value: "windsurf",    label: "Windsurf",          category: "IDE / AI",        svgPath: "M13 10V3L4 14h7v7l9-11h-7z",                             color: "#6B6B6B" },
+  { value: "midjourney",  label: "Midjourney",        category: "Image Gen",        svgPath: "M12 2l-2.4 7.2H2l6 4.8-2.4 7.2L12 17l6.4 4.2L16 14l6-4.8h-7.6L12 2z", color: "#9B59B6" },
+  { value: "v0",          label: "v0 / Vercel AI",    category: "UI Generation",    svgPath: "M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z", color: "#1A1A1A" },
 ];
 
-function AiToolIcon({ svgPath, color }: { svgPath: string; color: string }) {
+/* ═══════════════════════════════════════════════════════════════════
+   PLAN OPTIONS PER TOOL
+═══════════════════════════════════════════════════════════════════ */
+
+const TOOL_PLANS: Record<string, { value: string; label: string; price: string }[]> = {
+  cursor: [
+    { value: "hobby",     label: "Hobby",           price: "$0/mo" },
+    { value: "pro",       label: "Pro",             price: "$20/mo" },
+    { value: "business",  label: "Business",         price: "$30/user/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+  ],
+  copilot: [
+    { value: "individual", label: "Individual",      price: "$10/mo" },
+    { value: "business",  label: "Business",         price: "$19/user/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+  ],
+  claude: [
+    { value: "free",      label: "Free",             price: "$0/mo" },
+    { value: "pro",       label: "Pro",              price: "$20/mo" },
+    { value: "max",       label: "Max",              price: "$100/mo" },
+    { value: "team",      label: "Team",            price: "$25/user/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+    { value: "api",       label: "API Direct",      price: "Pay-as-you-go" },
+  ],
+  chatgpt: [
+    { value: "free",     label: "Free",             price: "$0/mo" },
+    { value: "plus",      label: "Plus",             price: "$20/mo" },
+    { value: "team",      label: "Team",            price: "$25/user/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+    { value: "api",       label: "API Direct",      price: "Pay-as-you-go" },
+  ],
+  "anthropic-api": [
+    { value: "api",       label: "API Direct",      price: "Pay-as-you-go" },
+    { value: "pro",       label: "Pro Plan",         price: "$100/mo" },
+    { value: "enterprise", label: "Enterprise",       price: "Custom" },
+  ],
+  "openai-api": [
+    { value: "payg",      label: "Pay-as-you-go",   price: "Usage-based" },
+    { value: "pro",       label: "Pro",             price: "$250/mo" },
+    { value: "scale",     label: "Scale",           price: "Custom" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+  ],
+  gemini: [
+    { value: "free",     label: "Free",             price: "$0/mo" },
+    { value: "pro",      label: "Pro",              price: "$19.99/mo" },
+    { value: "ultra",    label: "Ultra",            price: "Custom" },
+    { value: "api",      label: "API",              price: "Usage-based" },
+  ],
+  windsurf: [
+    { value: "free",     label: "Free",             price: "$0/mo" },
+    { value: "pro",      label: "Pro",              price: "$20/mo" },
+    { value: "team",     label: "Team",             price: "$25/user/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+  ],
+  midjourney: [
+    { value: "standard",  label: "Standard",         price: "$10/mo" },
+    { value: "pro",      label: "Pro",              price: "$30/mo" },
+    { value: "mega",     label: "Mega",             price: "$60/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+  ],
+  v0: [
+    { value: "free",     label: "Free",             price: "$0/mo" },
+    { value: "pro",      label: "Pro",              price: "$20/mo" },
+    { value: "team",     label: "Team",             price: "$30/user/mo" },
+    { value: "enterprise", label: "Enterprise",      price: "Custom" },
+  ],
+};
+
+const SPEND_BUCKETS = [
+  { value: 10,  label: "$0–10" },
+  { value: 30,  label: "$10–30" },
+  { value: 75,  label: "$30–75" },
+  { value: 150, label: "$75–150" },
+  { value: 300, label: "$150–300" },
+  { value: 500, label: "$300–500" },
+  { value: 1000, label: "$500–1K" },
+  { value: 2000, label: "$1K–2K" },
+  { value: 5000, label: "$2K–5K" },
+  { value: 99999, label: "$5K+" },
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   META CONSTANTS
+═══════════════════════════════════════════════════════════════════ */
+
+const TEAM_SIZES = [
+  { value: "1-5",   label: "1–5" },
+  { value: "6-15",  label: "6–15" },
+  { value: "16-50", label: "16–50" },
+  { value: "51-200", label: "51–200" },
+  { value: "200+", label: "200+" },
+];
+
+const ROLES = [
+  "Software Engineer", "Engineering Manager", "CTO / VP Engineering",
+  "Product Manager", "Founder / CEO", "Designer", "Data Scientist",
+  "DevOps / Platform", "Other",
+];
+
+const USE_CASES = [
+  { value: "code-generation",   label: "Code generation",        icon: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" },
+  { value: "writing-content",   label: "Writing & content",      icon: "M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" },
+  { value: "research",          label: "Research & analysis",    icon: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" },
+  { value: "customer-support",  label: "Customer support",        icon: "M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" },
+  { value: "data-processing",  label: "Data processing",         icon: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4" },
+];
+
+const SPEND_RANGES = [
+  { value: "0-100",  label: "$0–$100",  sub: "Getting started" },
+  { value: "100-500", label: "$100–$500", sub: "Small team" },
+  { value: "500-2k",  label: "$500–$2K", sub: "Growing" },
+  { value: "2k-10k",  label: "$2K–$10K", sub: "Scaling" },
+  { value: "10k+",   label: "$10K+",   sub: "Enterprise" },
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   STORAGE HELPERS
+═══════════════════════════════════════════════════════════════════ */
+
+const STORAGE_KEY = "costiq_onboarding";
+
+function loadForm(): AuditFormData {
+  if (typeof window === "undefined") return DEFAULT_FORM;
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw) as Partial<AuditFormData>;
+      return { ...DEFAULT_FORM, ...parsed };
+    }
+  } catch {}
+  return DEFAULT_FORM;
+}
+
+function saveForm(form: AuditFormData) {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(form));
+  } catch {}
+}
+
+function clearForm() {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {}
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   COMPONENTS
+═══════════════════════════════════════════════════════════════════ */
+
+function ToolIcon({ path, color, size = 16 }: { path: string; color: string; size?: number }) {
   return (
-    <svg className="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={1.5} aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" d={svgPath} />
+    <svg className="shrink-0" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.75} aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" d={path} />
     </svg>
   );
 }
 
-const TOOL_PLANS: Record<string, string[]> = {
-  chatgpt: ["Free", "Plus ($20/mo)", "Team ($25/seat/mo)", "Enterprise"],
-  claude: ["Free", "Pro ($20/mo)", "Team ($25/seat/mo)", "Max ($100/mo)", "Enterprise"],
-  cursor: ["Free", "Pro ($20/mo)", "Team ($25/seat/mo)", "Enterprise"],
-  copilot: ["Individual ($10/mo)", "Business ($19/seat/mo)", "Enterprise"],
-  gemini: ["Free", "Advanced ($19.99/mo)", "Ultra (custom)"],
-  "openai-api": ["Pay-as-you-go", "Pro ($250/mo)", "Scale (custom)", "Enterprise"],
-  "anthropic-api": ["Pay-as-you-go", "Pro ($100/mo)", "Enterprise"],
-  "azure-openai": ["Pay-as-you-go", "Standard", "Enterprise"],
-  "aws-bedrock": ["Pay-as-you-go", "Pro", "Enterprise"],
-  midjourney: ["Standard ($10/mo)", "Pro ($30/mo)", "Mega ($60/mo)", "Enterprise"],
-  replicate: ["Pay-as-you-go", "Pro", "Enterprise"],
-};
-
-const BUDGET_RANGES = [
-  { min: 0, max: 100, label: "Under $100/mo" },
-  { min: 100, max: 300, label: "$100–300/mo" },
-  { min: 300, max: 500, label: "$300–500/mo" },
-  { min: 500, max: 1000, label: "$500–1,000/mo" },
-  { min: 1000, max: 3000, label: "$1,000–3,000/mo" },
-  { min: 3000, max: 10000, label: "$3,000–10,000/mo" },
-  { min: 10000, max: 9999999, label: "$10,000+/mo" },
-];
-
-const BILLING_CYCLES = [
-  { value: "monthly", label: "Monthly" },
-  { value: "annual", label: "Annual (save ~20%)" },
-];
-
 function ProgressBar({ step }: { step: number }) {
+  const TOTAL = 3;
   return (
-    <div className="sticky top-0 z-50 w-full max-w-[100vw] overflow-x-hidden bg-white/80 backdrop-blur-xl border-b border-[#A8BDE0]/25">
-      <div className="mx-auto w-full max-w-2xl min-w-0 px-4 sm:px-6 py-5">
-        {/* Back + Logo */}
+    <div className="sticky top-0 z-50 w-full bg-white/95 border-b border-[#d8e4f0] shadow-[0_1px_3px_rgba(0,0,0,0.04)]">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-5">
         <div className="flex items-center justify-between mb-4">
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-7 h-7 rounded-xl bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] flex items-center justify-center shadow-btn-primary">
-              <span className="text-white font-bold text-xs">$</span>
+            <div className="w-8 h-8 rounded-xl bg-[#0D2137] flex items-center justify-center shadow-sm">
+              <span className="text-white font-bold text-sm">$</span>
             </div>
-            <span className="text-[14px] font-semibold text-[#04080F] group-hover:text-[#4A70B0] transition-colors">CostIQ</span>
+            <span className="text-[14px] font-bold text-[#0D2137] tracking-tight">CostIQ</span>
           </Link>
-          <span className="text-[12px] text-[#04080F]/40 font-medium">
-            Step {step} of {TOTAL_STEPS}
-          </span>
-        </div>
-
-        {/* Progress */}
-        <div className="relative overflow-hidden">
-          <div className="flex gap-2">
-            {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-              <div key={i} className="flex-1 h-2 rounded-full overflow-hidden bg-[#A8BDE0]/25">
-                <motion.div
-                  className="h-full rounded-full bg-gradient-to-r from-[#4A70B0] to-[#507DBC]"
-                  initial={{ width: "0%" }}
-                  animate={{ width: i < step - 1 ? "100%" : i === step - 1 ? "100%" : "0%" }}
-                  transition={{ duration: 0.4 }}
-                />
-              </div>
-            ))}
+          <div className="flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-[11px] font-semibold text-[#94A3B8]">Step {step}</span>
+              <span className="text-[#CBD5E1]">·</span>
+              <span className="text-[11px] text-[#94A3B8]">{TOTAL} total</span>
+            </div>
           </div>
-          <motion.div
-            className="absolute -bottom-1 left-0 h-2.5 rounded-full bg-gradient-to-r from-[#4A70B0] to-[#507DBC] shadow-[0_0_8px_rgba(74,112,176,0.4)]"
-            initial={{ width: `${((1 - 1) / TOTAL_STEPS) * 100}%` }}
-            animate={{ width: `${((step - 1) / TOTAL_STEPS) * 100}%` }}
-            transition={{ duration: 0.4 }}
-          />
+        </div>
+        <div className="h-1.5 bg-[#EEF3F8] rounded-full overflow-hidden flex gap-1">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex-1 h-full rounded-full overflow-hidden bg-[#EEF3F8]">
+              <motion.div
+                className="h-full rounded-full"
+                initial={{ width: 0 }}
+                animate={{ width: i <= step ? "100%" : "0%" }}
+                transition={{ duration: 0.4, ease: "easeOut" }}
+                style={{ backgroundColor: i <= step ? "#0D2137" : "transparent" }}
+              />
+            </div>
+          ))}
         </div>
       </div>
     </div>
   );
 }
 
-function StepWrapper({ children, stepKey }: { children: React.ReactNode; stepKey: number }) {
+function BtnPrimary({ onClick, disabled, loading, children }: {
+  onClick?: () => void; disabled?: boolean; loading?: boolean; children: React.ReactNode;
+}) {
   return (
-    <motion.div
-      key={stepKey}
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -8 }}
-      transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
-      className="min-w-0"
+    <motion.button
+      onClick={onClick} disabled={disabled || loading}
+      whileHover={disabled ? {} : { y: -1 }}
+      whileTap={disabled ? {} : { scale: 0.985 }}
+      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      className={`relative w-full btn-label flex items-center justify-center gap-2.5 py-3.5 sm:py-4 px-6 rounded-xl font-semibold overflow-hidden transition-shadow duration-200 ${
+        disabled
+          ? "bg-[#EEF3F8] text-[#94A3B8] border border-[#d8e4f0] cursor-not-allowed"
+          : "bg-[#0D2137] text-white shadow-[0_1px_2px_rgba(13,33,55,0.18),0_4px_14px_rgba(13,33,55,0.22),inset_0_1px_0_rgba(255,255,255,0.09)] hover:shadow-[0_2px_4px_rgba(13,33,55,0.2),0_10px_28px_rgba(13,33,55,0.34),inset_0_1px_0_rgba(255,255,255,0.14)]"
+      }`}
+    >
+      {!disabled && (
+        <span aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-gradient-to-b from-white/10 to-transparent pointer-events-none" />
+      )}
+      {loading && <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: "linear" }} className="relative w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />}
+      <span className="relative inline-flex items-center gap-2.5">{children}</span>
+    </motion.button>
+  );
+}
+
+function BtnSecondary({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
+  return (
+    <motion.button onClick={onClick}
+      whileHover={{ y: -1 }} whileTap={{ scale: 0.985 }}
+      transition={{ type: "spring", stiffness: 420, damping: 28 }}
+      className="w-full btn-label flex items-center justify-center gap-2.5 py-3.5 sm:py-4 px-6 rounded-xl bg-white text-[#3D5A73] border border-[#d8e4f0] hover:border-[#0D2137]/35 hover:text-[#0D2137] hover:bg-[#f4f8fc] shadow-[0_1px_2px_rgba(13,33,55,0.04)] hover:shadow-[0_2px_8px_rgba(13,33,55,0.08)] transition-all duration-200 font-semibold"
     >
       {children}
+    </motion.button>
+  );
+}
+
+function FieldLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="text-[11px] font-bold text-[#5B7A99] uppercase tracking-[0.1em] mb-2.5">{children}</p>
+  );
+}
+
+/* ── Premium custom select ─────────────────────────────────────── */
+
+function CustomSelect({
+  value, onChange, options, placeholder,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+  options: string[];
+  placeholder?: string;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className={`relative w-full flex items-center justify-between gap-3 px-4 py-3 rounded-xl border bg-white text-left text-[14px] overflow-hidden ${
+          open
+            ? "border-[#5B8DBE]/45"
+            : "border-[#E5EDF5] hover:border-[#94B0CC]/55"
+        }`}
+        style={{
+          boxShadow: open
+            ? "0 0 0 4px rgba(91,141,190,0.12), 0 1px 3px rgba(13,33,55,0.05), 0 6px 16px -6px rgba(91,141,190,0.2)"
+            : "0 1px 2px rgba(13,33,55,0.03), 0 2px 6px -2px rgba(91,141,190,0.06)",
+          transition: "box-shadow 280ms cubic-bezier(0.16, 1, 0.3, 1), border-color 220ms ease-out",
+        }}
+      >
+        <span className={`truncate ${value ? "text-[#0D2137] font-medium" : "text-[#94A3B8]"}`}>
+          {value || placeholder || "Select..."}
+        </span>
+        <motion.svg
+          animate={{ rotate: open ? 180 : 0 }}
+          transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
+          className="w-4 h-4 text-[#5B7A99] flex-shrink-0"
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </motion.svg>
+      </button>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+            role="listbox"
+            style={{
+              boxShadow:
+                "0 4px 16px -4px rgba(13,33,55,0.12), 0 18px 44px -12px rgba(13,33,55,0.18), 0 0 0 1px rgba(13,33,55,0.04), inset 0 1px 0 rgba(255,255,255,0.85)",
+              transformOrigin: "top center",
+            }}
+            className="absolute z-40 left-0 right-0 mt-2 rounded-xl border border-white/70 bg-white/85 backdrop-blur-xl overflow-hidden"
+          >
+            <div className="max-h-72 overflow-y-auto p-1.5">
+              {options.map((opt) => {
+                const isSel = opt === value;
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    role="option"
+                    aria-selected={isSel}
+                    onClick={() => { onChange(opt); setOpen(false); }}
+                    className={`group w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-lg text-left text-[13px] font-medium transition-colors duration-150 ${
+                      isSel
+                        ? "bg-[#0D2137] text-white"
+                        : "text-[#3D5A73] hover:bg-[#F0F5FA] hover:text-[#0D2137]"
+                    }`}
+                    style={
+                      isSel
+                        ? { boxShadow: "0 1px 3px rgba(13,33,55,0.22), inset 0 1px 0 rgba(255,255,255,0.08)" }
+                        : undefined
+                    }
+                  >
+                    <span className="truncate">{opt}</span>
+                    {isSel && (
+                      <svg className="w-3.5 h-3.5 text-white/90 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                      </svg>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* ── Per-tool configuration card ──────────────────────────────── */
+
+function ToolConfigCard({
+  tool, config, validation, onChange,
+}: {
+  tool: typeof TOOL_DEFS[number];
+  config: ToolConfig;
+  validation: ToolValidation;
+  onChange: (updated: ToolConfig) => void;
+}) {
+  const plans = TOOL_PLANS[tool.value] || [];
+  const [expanded, setExpanded] = useState(!validation.valid || !!config.plan);
+  const missing = validation.missing;
+  const isMissing = (field: "plan" | "spend" | "seats") => missing.includes(field);
+
+  return (
+    <motion.div
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25 }}
+      className="bg-white rounded-xl border border-[#d8e4f0] shadow-[0_1px_3px_rgba(0,0,0,0.05)] overflow-hidden"
+    >
+      {/* Header */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center gap-3.5 px-4 py-3.5 text-left hover:bg-[#f4f8fc] transition-colors duration-150"
+      >
+        <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${tool.color}15` }}>
+          <ToolIcon path={tool.svgPath} color={tool.color} size={14} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="text-[13px] font-bold text-[#0D2137]">{tool.label}</p>
+          <p className="text-[11px] text-[#94A3B8]">{tool.category}</p>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          {config.plan && (
+            <span className="text-[11px] font-semibold px-2.5 py-1 rounded-lg bg-[#f4f8fc] text-[#5B7A99] border border-[#d8e4f0]">
+              {plans.find((p) => p.value === config.plan)?.label || config.plan}
+            </span>
+          )}
+          <span
+            className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2 py-1 rounded-lg border ${
+              validation.valid
+                ? "bg-[#10A37F]/10 text-[#10A37F] border-[#10A37F]/20"
+                : "bg-[#F59E0B]/10 text-[#92400E] border-[#F59E0B]/25"
+            }`}
+          >
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                validation.valid ? "bg-[#10A37F]" : "bg-[#F59E0B]"
+              }`}
+            />
+            {validation.valid ? "Complete" : "Needs setup"}
+          </span>
+          <motion.svg
+            animate={{ rotate: expanded ? 180 : 0 }}
+            transition={{ duration: 0.2 }}
+            className="w-4 h-4 text-[#94A3B8] flex-shrink-0"
+            fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </motion.svg>
+        </div>
+      </button>
+
+      {/* Config body */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: "easeOut" }}
+            className="overflow-hidden"
+          >
+            <div className={`px-4 pb-4 pt-1 grid grid-cols-1 gap-3 ${validation.requiresSeats ? "sm:grid-cols-3" : "sm:grid-cols-2"}`}>
+              {/* Plan */}
+              <div>
+                <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-[0.08em] mb-1.5">
+                  Plan
+                  {isMissing("plan") && <span className="ml-1 text-[#92400E] font-medium normal-case tracking-normal">· Required</span>}
+                </p>
+                <div className="relative">
+                  <select
+                    value={config.plan}
+                    onChange={(e) => onChange({ ...config, plan: e.target.value })}
+                    className="w-full text-[12px] font-medium text-[#0D2137] bg-[#f4f8fc] border border-[#d8e4f0] rounded-lg px-3 py-2.5 pr-8 appearance-none cursor-pointer focus:outline-none focus:border-[#0D2137] focus:ring-[2px] focus:ring-[#0D2137]/10 transition-all"
+                  >
+                    <option value="">Select plan</option>
+                    {plans.map((p) => <option key={p.value} value={p.value}>{p.label} · {p.price}</option>)}
+                    <option value="not-sure">Not sure</option>
+                  </select>
+                  <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Monthly spend */}
+              <div>
+                <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-[0.08em] mb-1.5">
+                  Monthly spend
+                  {isMissing("spend") && <span className="ml-1 text-[#92400E] font-medium normal-case tracking-normal">· Required</span>}
+                </p>
+                <div className="relative">
+                  <select
+                    value={config.monthlySpend ?? ""}
+                    onChange={(e) => onChange({ ...config, monthlySpend: e.target.value ? Number(e.target.value) : null })}
+                    className="w-full text-[12px] font-medium text-[#0D2137] bg-[#f4f8fc] border border-[#d8e4f0] rounded-lg px-3 py-2.5 pr-8 appearance-none cursor-pointer focus:outline-none focus:border-[#0D2137] focus:ring-[2px] focus:ring-[#0D2137]/10 transition-all"
+                  >
+                    <option value="">Select range</option>
+                    {SPEND_BUCKETS.map((b) => <option key={b.value} value={b.value}>{b.label}/mo</option>)}
+                  </select>
+                  <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                  </svg>
+                </div>
+              </div>
+
+              {/* Seats — only when per-user plan */}
+              {validation.requiresSeats && (
+                <div>
+                  <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-[0.08em] mb-1.5">
+                    Seats / users
+                    {isMissing("seats") && <span className="ml-1 text-[#92400E] font-medium normal-case tracking-normal">· Required</span>}
+                  </p>
+                  <div className="relative">
+                    <select
+                      value={config.seats ?? ""}
+                      onChange={(e) => onChange({ ...config, seats: e.target.value ? Number(e.target.value) : null })}
+                      className="w-full text-[12px] font-medium text-[#0D2137] bg-[#f4f8fc] border border-[#d8e4f0] rounded-lg px-3 py-2.5 pr-8 appearance-none cursor-pointer focus:outline-none focus:border-[#0D2137] focus:ring-[2px] focus:ring-[#0D2137]/10 transition-all"
+                    >
+                      <option value="">Select</option>
+                      {Array.from({ length: 20 }, (_, i) => i + 1).map((n) => (
+                        <option key={n} value={n}>{n} seat{n !== 1 ? "s" : ""}</option>
+                      ))}
+                      <option value="25">25+</option>
+                      <option value="50">50+</option>
+                      <option value="100">100+</option>
+                    </select>
+                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#94A3B8] pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Summary row */}
+            {config.plan && config.monthlySpend && (
+              <div className="px-4 pb-4">
+                <div className="bg-[#f4f8fc] rounded-lg px-3.5 py-2.5 flex items-center gap-3 border border-[#d8e4f0]">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#10A37F] flex-shrink-0" />
+                  <span className="text-[11px] text-[#5B7A99]">
+                    {tool.label} · {plans.find((p) => p.value === config.plan)?.label} ·{" "}
+                    ~{SPEND_BUCKETS.find((b) => b.value === config.monthlySpend)?.label}/mo
+                    {validation.requiresSeats && config.seats ? ` · ${config.seats} seats` : ""}
+                  </span>
+                </div>
+              </div>
+            )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
 
-function SelectableCard({
-  selected,
-  onClick,
-  children,
-  className = "",
-}: {
-  selected: boolean;
-  onClick: () => void;
-  children: React.ReactNode;
-  className?: string;
+/* ── Review summary row ──────────────────────────────────────────── */
+
+function ReviewRow({ iconPath, label, value, color }: {
+  iconPath: string; label: string; value: string; color: string;
 }) {
   return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.98 }}
-      className={`relative w-full min-w-0 text-left p-4 rounded-2xl border-2 transition-all duration-200 ${
-        selected
-          ? "border-[#4A70B0] bg-[#4A70B0]/12 shadow-[0_0_0_2px_rgba(74,112,176,0.15),0_4px_16px_rgba(74,112,176,0.12)]"
-          : "border-[#A8BDE0]/35 bg-white hover:border-[#4A70B0]/40 hover:bg-white hover:shadow-card"
-      } ${className}`}
-    >
-      {selected && (
-        <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          className="absolute top-3 right-3 w-5 h-5 rounded-full bg-[#4A70B0] flex items-center justify-center"
-        >
-          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-          </svg>
-        </motion.div>
-      )}
-      {children}
-    </motion.button>
+    <div className="flex items-start gap-3 py-3 border-b border-[#f0f4f8] last:border-0">
+      <div className="w-7 h-7 rounded-lg bg-[#f4f8fc] flex items-center justify-center flex-shrink-0 mt-0.5">
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke={color} strokeWidth={1.75}>
+          <path strokeLinecap="round" strokeLinejoin="round" d={iconPath} />
+        </svg>
+      </div>
+      <div>
+        <p className="text-[10px] font-semibold text-[#94A3B8] uppercase tracking-[0.08em]">{label}</p>
+        <p className="text-[13px] font-semibold text-[#0D2137] mt-0.5">{value}</p>
+      </div>
+    </div>
   );
 }
 
-function PrimaryButton({
-  onClick,
-  children,
-  disabled = false,
-  loading = false,
-}: {
-  onClick?: () => void;
-  children: React.ReactNode;
-  disabled?: boolean;
-  loading?: boolean;
-}) {
-  return (
-    <motion.button
-      onClick={onClick}
-      disabled={disabled || loading}
-      whileHover={disabled ? {} : { y: -2, scale: 1.01 }}
-      whileTap={disabled ? {} : { scale: 0.98 }}
-      className={`relative w-full py-4 rounded-2xl font-semibold text-[14px] tracking-wide transition-all duration-200 overflow-hidden ${
-        disabled
-          ? "bg-[#C5D0D8]/60 text-[#04080F]/35 cursor-not-allowed border border-[#A8BDE0]/50"
-          : "bg-gradient-to-b from-[#4A70B0] to-[#3E5F96] text-white shadow-[0_4px_16px_rgba(74,112,176,0.3),0_0_0_1px_rgba(74,112,176,0.2)] hover:shadow-[0_6px_24px_rgba(74,112,176,0.4),0_0_0_1px_rgba(74,112,176,0.3)]"
-      }`}
-    >
-      {!disabled && (
-        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.08] to-transparent" />
-      )}
-      <span className="relative z-10 flex items-center justify-center gap-2">
-        {loading ? (
-          <motion.div
-            animate={{ rotate: 360 }}
-            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full"
-          />
-        ) : null}
-        {children}
-      </span>
-    </motion.button>
-  );
-}
-
-function SecondaryButton({ onClick, children }: { onClick?: () => void; children: React.ReactNode }) {
-  return (
-    <motion.button
-      onClick={onClick}
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.98 }}
-      className="w-full py-4 rounded-2xl font-medium text-[14px] tracking-wide border-2 border-[#A8BDE0]/40 bg-white/70 hover:bg-white hover:border-[#4A70B0]/40 text-[#04080F] transition-all duration-200"
-    >
-      {children}
-    </motion.button>
-  );
-}
+/* ═══════════════════════════════════════════════════════════════════
+   MAIN PAGE
+═══════════════════════════════════════════════════════════════════ */
 
 export default function AuditPage() {
-  const [step, setStep] = useState(1);
-  const [direction, setDirection] = useState(1);
+  const router = useRouter();
 
-  // Step 1 — Team Info
-  const [companyName, setCompanyName] = useState("");
-  const [teamSize, setTeamSize] = useState("");
-  const [role, setRole] = useState("");
-  const [selectedUseCases, setSelectedUseCases] = useState<string[]>([]);
-  const [spendRange, setSpendRange] = useState("");
-
-  // Step 2 — AI Tools
-  const [selectedTools, setSelectedTools] = useState<string[]>([]);
-  const [customTools, setCustomTools] = useState("");
-
-  // Step 3 — Plans & Spend
-  const [budgetRange, setBudgetRange] = useState<number | null>(null);
-  const [billingCycle, setBillingCycle] = useState("monthly");
-  const [toolPlans, setToolPlans] = useState<Record<string, string>>({});
-  const [toolSeats, setToolSeats] = useState<Record<string, number>>({});
-  const [toolSpend, setToolSpend] = useState<Record<string, string>>({});
-
-  // Step 4 — Review
+  // ── Transient UI state ────────────────────────────────────────────
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
 
-  // Computed
-  const canAdvanceStep1 = companyName.trim() && teamSize && role && selectedUseCases.length > 0 && spendRange;
-  const canAdvanceStep2 = selectedTools.length > 0;
-  const canAdvanceStep3 = budgetRange !== null;
+  // ── Load saved form state ────────────────────────────────────────
+  const [form, setForm] = useState<AuditFormData>(DEFAULT_FORM);
+  const [loaded, setLoaded] = useState(false);
 
-  const stepTitles = [
-    { label: "AI Audit Setup", title: "Set up your AI spend audit", sub: "Tell us about your team and current AI usage — takes under 2 minutes." },
-    { label: "AI Tools", title: "Which AI tools do you use?", sub: "We benchmark your current plans against alternatives to find where you're paying too much." },
-    { label: "Plans & Spend", title: "Review your current setup", sub: "We benchmark your plans against alternatives to find where you're overpaying." },
-    { label: "Review", title: "Your audit is ready", sub: "Here's what we'll analyze — confirm and hit generate." },
-  ];
+  useEffect(() => {
+    const saved = loadForm();
+    setForm(saved);
+    setLoaded(true);
+  }, []);
 
-  const selectedBudget = BUDGET_RANGES[budgetRange ?? 0];
-  const estSavingsLow = selectedBudget ? Math.round((selectedBudget.min * 0.25)) : 0;
-  const estSavingsHigh = selectedBudget ? Math.round((selectedBudget.max * 0.4)) : 0;
-  const optScore = selectedTools.length > 4 ? 54 : selectedTools.length > 2 ? 62 : 71;
+  const update = useCallback((patch: Partial<AuditFormData>) => {
+    setForm((prev) => {
+      const next = { ...prev, ...patch };
+      saveForm(next);
+      return next;
+    });
+  }, []);
+
+  const updateToolConfig = useCallback((toolKey: string, updated: ToolConfig) => {
+    setForm((prev) => {
+      const next = {
+        ...prev,
+        toolConfigs: { ...prev.toolConfigs, [toolKey]: updated },
+      };
+      saveForm(next);
+      return next;
+    });
+  }, []);
+
+  // ── Computed ─────────────────────────────────────────────────────
+  const TOTAL_STEPS = 3;
+  const step = form.step;
+
+  const canAdvance1 = form.companyName.trim() && form.teamSize && form.role && form.selectedUseCases.length > 0 && form.spendRange;
+  const canAdvance2 = form.selectedTools.length > 0;
+
+  const toolValidation = validateAllTools(form.selectedTools, form.toolConfigs);
+  const canSubmit = form.selectedTools.length > 0 && toolValidation.allValid;
+
+  const configuredCount = form.selectedTools.filter((t) => toolValidation.perTool[t]?.valid).length;
+  const totalSpend = Object.values(form.toolConfigs).reduce((sum, c) => sum + (c.monthlySpend ?? 0), 0);
+  const optScore = Math.min(92, 50 + configuredCount * 4 + (form.billingCycle === "annual" ? 5 : 0));
 
   const goNext = () => {
-    setDirection(1);
-    setStep((s) => Math.min(s + 1, TOTAL_STEPS));
+    if (step === 1 && !canAdvance1) return;
+    if (step === 2 && !canAdvance2) return;
+    update({ step: Math.min(step + 1, TOTAL_STEPS) });
   };
-
-  const goBack = () => {
-    setDirection(-1);
-    setStep((s) => Math.max(s - 1, 1));
-  };
+  const goBack = () => update({ step: Math.max(step - 1, 1) });
 
   const toggleTool = (tool: string) => {
-    setSelectedTools((prev) =>
-      prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]
-    );
+    const isAdding = !form.selectedTools.includes(tool);
+    update({
+      selectedTools: isAdding
+        ? [...form.selectedTools, tool]
+        : form.selectedTools.filter((t) => t !== tool),
+    });
   };
 
   const handleSubmit = () => {
+    if (!canSubmit) return;
+    const reportId = generateReportId();
+    const shareToken = generateShareToken();
+    const toolDataList = form.selectedTools.map((toolKey) => {
+      const def = TOOL_DEFS.find((t) => t.value === toolKey);
+      const cfg = form.toolConfigs[toolKey] || { plan: "", monthlySpend: null, seats: null };
+      const v = toolValidation.perTool[toolKey];
+      const planMeta = TOOL_PLANS[toolKey]?.find((p) => p.value === cfg.plan);
+      return {
+        key: toolKey,
+        label: def?.label || toolKey,
+        category: def?.category || "",
+        color: def?.color || "#5B8DBE",
+        plan: cfg.plan,
+        planLabel: planMeta?.label || cfg.plan,
+        monthlySpend: cfg.monthlySpend,
+        seats: v?.requiresSeats ? cfg.seats : 1,
+      };
+    });
+
+    const auditData = {
+      id: reportId,
+      shareToken,
+      companyName: form.companyName,
+      teamSize: form.teamSize,
+      role: form.role,
+      selectedUseCases: form.selectedUseCases,
+      spendRange: form.spendRange,
+      selectedTools: form.selectedTools,
+      customTools: form.customTools,
+      billingCycle: form.billingCycle,
+      toolData: toolDataList,
+      configuredCount,
+      totalSpend,
+      submittedAt: new Date().toISOString(),
+    };
+
+    try {
+      sessionStorage.setItem(reportStorageKey(reportId), JSON.stringify(auditData));
+      rememberOwnerToken(reportId, shareToken);
+      sessionStorage.removeItem("costiq_audit");
+    } catch {}
+    clearForm();
     setSubmitting(true);
-    setTimeout(() => {
-      setSubmitting(false);
-      setSubmitted(true);
-    }, 2200);
+    setTimeout(() => router.push(`/report/${reportId}?share=${shareToken}`), 2500);
   };
 
-  const slideVariants = {
-    enter: (dir: number) => ({ opacity: 0, x: dir > 0 ? 16 : -16 }),
-    center: { opacity: 1, x: 0 },
-    exit: (dir: number) => ({ opacity: 0, x: dir > 0 ? -16 : 16 }),
-  };
+  if (!loaded) return null;
 
   return (
-    <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-[#B8C4CE] relative isolate">
-      {/* Background — clipped to viewport */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
-        <div className="absolute inset-0 bg-gradient-to-br from-[#A8B8C4] via-[#B0BEC8] to-[#A8B8C4]" />
-        <div className="absolute inset-0 grid-bg opacity-20" />
-        <div className="absolute -top-24 -right-24 h-[min(500px,80vw)] w-[min(500px,80vw)] rounded-full bg-[#8BB4DC]/12 blur-3xl" />
-        <div className="absolute -bottom-24 -left-24 h-[min(400px,70vw)] w-[min(400px,70vw)] rounded-full bg-[#4A70B0]/8 blur-3xl" />
-      </div>
-
+    <div className="min-h-screen bg-[#EEF3F8]">
       <ProgressBar step={step} />
 
-      <div className="relative w-full max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14 min-w-0">
-        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-card border border-[#A8BDE0]/30 px-5 sm:px-8 py-8 sm:py-10 overflow-hidden">
-          <AnimatePresence mode="wait" custom={direction}>
+      <div className="max-w-2xl mx-auto px-4 sm:px-6 py-10 sm:py-14">
+        <div className="bg-white rounded-2xl border border-[#d8e4f0] shadow-[0_1px_4px_rgba(0,0,0,0.05),0_2px_12px_rgba(0,0,0,0.04)] px-5 sm:px-8 py-8 sm:py-10 overflow-hidden">
+
+          <AnimatePresence mode="wait">
             <motion.div
               key={step}
-              custom={direction}
-              variants={slideVariants}
-              initial="enter"
-              animate="center"
-              exit="exit"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -8 }}
               transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
               className="min-w-0"
             >
-            {/* Step 1 — AI Audit Setup */}
-            {step === 1 && (
-              <StepWrapper stepKey={1}>
-                <div className="mb-8">
-                  <h1 className="text-[26px] sm:text-[30px] font-bold text-[#04080F] tracking-tight mb-2">
-                    {stepTitles[0].title}
-                  </h1>
-                  <p className="text-[13px] sm:text-[14px] text-[#04080F] font-normal leading-relaxed">
-                    {stepTitles[0].sub}
-                  </p>
-                </div>
 
-                <div className="space-y-6">
-
-                  {/* Company name */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-2 uppercase">
-                      Company or team name
-                    </label>
-                    <input
-                      type="text"
-                      value={companyName}
-                      onChange={(e) => setCompanyName(e.target.value)}
-                      placeholder="e.g. Relay AI, Stackline, Orbit Analytics"
-                      className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#A8BDE0]/40 bg-white text-[14px] text-[#04080F] placeholder:text-[#04080F]/30 transition-all duration-200 focus:outline-none focus:border-[#4A70B0] focus:bg-white focus:shadow-[0_0_0_3px_rgba(74,112,176,0.18),0_4px_20px_rgba(74,112,176,0.08)]"
-                    />
-                  </div>
-
-                  {/* Team size */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-2 uppercase">
-                      Team size
-                    </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                      {TEAM_SIZES.map((size) => (
-                        <motion.button
-                          key={size.value}
-                          onClick={() => setTeamSize(size.value)}
-                          whileHover={teamSize !== size.value ? { y: -2, scale: 1.02 } : {}}
-                          whileTap={{ scale: 0.97 }}
-                          className={`relative py-3 rounded-2xl border-2 font-semibold text-[13px] transition-all duration-200 ${
-                            teamSize === size.value
-                              ? "border-[#4A70B0] bg-gradient-to-b from-[#4A70B0] to-[#3E5F96] text-white shadow-[0_4px_14px_rgba(74,112,176,0.35),0_0_0_1px_rgba(74,112,176,0.3)]"
-                              : "border-[#A8BDE0]/35 bg-white text-[#04080F] hover:border-[#4A70B0]/50 hover:shadow-[0_4px_12px_rgba(74,112,176,0.1)] hover:bg-white"
-                          }`}
-                        >
-                          {size.label}
-                        </motion.button>
-                      ))}
+              {/* ══════════════ STEP 1: Team Info ══════════════ */}
+              {step === 1 && (
+                <div>
+                  <div className="mb-8">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-6 rounded-full bg-[#10A37F]" />
+                      <h1 className="text-[24px] sm:text-[28px] font-bold text-[#0D2137] tracking-tight leading-tight">
+                        Set up your audit
+                      </h1>
                     </div>
+                    <p className="text-[13px] sm:text-[14px] text-[#5B7A99] ml-4 leading-relaxed">
+                      Tell us about your team and AI usage — we&apos;ll analyze where you&apos;re overspending.
+                    </p>
                   </div>
 
-                  {/* Role */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-2 uppercase">
-                      Your role
-                    </label>
-                    <div className="relative">
-                      <select
-                        value={role}
-                        onChange={(e) => setRole(e.target.value)}
-                        className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#A8BDE0]/40 bg-white text-[14px] text-[#04080F] appearance-none cursor-pointer pr-10 transition-all duration-200 focus:outline-none focus:border-[#4A70B0] focus:bg-white focus:shadow-[0_0_0_3px_rgba(74,112,176,0.18),0_4px_20px_rgba(74,112,176,0.08)]"
-                      >
-                        <option value="" disabled className="text-[#04080F]/30">
-                          Select your role
-                        </option>
-                        {ROLES.map((r) => (
-                          <option key={r} value={r}>{r}</option>
-                        ))}
-                      </select>
-                      <svg
-                        className="absolute right-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#04080F]/35 pointer-events-none"
-                        fill="none"
-                        viewBox="0 0 24 24"
-                        stroke="currentColor"
-                        strokeWidth={2}
-                      >
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                      </svg>
+                  <div className="space-y-6">
+
+                    {/* Company */}
+                    <div>
+                      <FieldLabel>Company or team name</FieldLabel>
+                      <input
+                        type="text"
+                        value={form.companyName}
+                        onChange={(e) => update({ companyName: e.target.value })}
+                        placeholder="e.g. Relay AI, Stackline, Orbit Analytics"
+                        className="w-full px-4 py-3 rounded-xl border border-[#c8d8e8] bg-[#f4f8fc] text-[14px] text-[#0D2137] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0D2137] focus:ring-[2px] focus:ring-[#0D2137]/10 transition-all"
+                      />
                     </div>
-                  </div>
 
-                  {/* Estimated Monthly AI Spend */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-2 uppercase">
-                      Estimated monthly AI spend
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
-                      {SPEND_RANGES.map((range) => (
-                        <motion.button
-                          key={range.value}
-                          onClick={() => setSpendRange(range.value)}
-                          whileHover={spendRange !== range.value ? { y: -2, scale: 1.02 } : {}}
-                          whileTap={{ scale: 0.97 }}
-                          className={`relative text-left p-3 rounded-2xl border-2 transition-all duration-200 ${
-                            spendRange === range.value
-                              ? "border-[#4A70B0] bg-[#4A70B0]/10 shadow-[0_0_0_2px_rgba(74,112,176,0.2),0_4px_14px_rgba(74,112,176,0.15)]"
-                              : "border-[#A8BDE0]/35 bg-white hover:border-[#4A70B0]/40 hover:shadow-[0_4px_12px_rgba(74,112,176,0.08)]"
-                          }`}
-                        >
-                          {spendRange === range.value && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#4A70B0] flex items-center justify-center"
-                            >
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                              </svg>
-                            </motion.div>
-                          )}
-                          <span className={`text-[12px] font-bold block mb-0.5 ${
-                            spendRange === range.value ? "text-[#4A70B0]" : "text-[#04080F]"
-                          }`}>
-                            {range.label}
-                          </span>
-                          <span className="text-[10px] text-[#04080F]/40">{range.sub}</span>
-                        </motion.button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* AI Use Cases — Multi-select */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-2 uppercase">
-                      How your team uses AI
-                      <span className="ml-1 normal-case font-normal text-[#04080F]/35">(select all that apply)</span>
-                    </label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {USE_CASES.map((uc) => {
-                        const isSelected = selectedUseCases.includes(uc.value);
-                        return (
-                          <motion.button
-                            key={uc.value}
-                            onClick={() => {
-                              setSelectedUseCases((prev) =>
-                                prev.includes(uc.value)
-                                  ? prev.filter((v) => v !== uc.value)
-                                  : [...prev, uc.value]
-                              );
-                            }}
-                            whileHover={{ y: -2, scale: 1.01 }}
-                            whileTap={{ scale: 0.98 }}
-                            className={`relative text-left p-3.5 rounded-2xl border-2 transition-all duration-200 ${
-                              isSelected
-                                ? "border-[#4A70B0] bg-[#4A70B0]/10 shadow-[0_0_0_2px_rgba(74,112,176,0.18),0_4px_14px_rgba(74,112,176,0.12)]"
-                                : "border-[#A8BDE0]/35 bg-white hover:border-[#4A70B0]/40 hover:shadow-[0_4px_12px_rgba(74,112,176,0.08)]"
+                    {/* Team size */}
+                    <div>
+                      <FieldLabel>Team size</FieldLabel>
+                      <div className="grid grid-cols-5 gap-2">
+                        {TEAM_SIZES.map((s) => (
+                          <motion.button key={s.value} onClick={() => update({ teamSize: s.value })}
+                            whileTap={{ scale: 0.96 }}
+                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                            className={`btn-label-sm py-3 rounded-xl border transition-colors duration-150 ${
+                              form.teamSize === s.value
+                                ? "border-[#0D2137] bg-[#0D2137] text-white shadow-[0_1px_3px_rgba(13,33,55,0.2),inset_0_1px_0_rgba(255,255,255,0.1)]"
+                                : "border-[#d8e4f0] bg-white text-[#5B7A99] hover:border-[#0D2137]/35 hover:text-[#0D2137] hover:bg-[#f4f8fc]"
                             }`}
                           >
-                            {isSelected && (
-                              <motion.div
-                                initial={{ scale: 0 }}
-                                animate={{ scale: 1 }}
-                                className="absolute top-3 right-3 w-4 h-4 rounded-full bg-[#4A70B0] flex items-center justify-center"
-                              >
-                                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                              </motion.div>
-                            )}
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors duration-200 ${
-                                isSelected ? "bg-[#4A70B0]/15" : "bg-[#A8BDE0]/15"
-                              }`}>
-                                <svg className={`w-3.5 h-3.5 transition-colors duration-200 ${isSelected ? "text-[#4A70B0]" : "text-[#4A70B0]/60"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d={uc.icon} />
-                                </svg>
-                              </div>
-                              <span className={`text-[13px] font-medium transition-colors duration-200 ${
-                                isSelected ? "text-[#4A70B0]" : "text-[#04080F]"
-                              }`}>
-                                {uc.label}
-                              </span>
-                            </div>
+                            {s.label}
                           </motion.button>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                    {selectedUseCases.length > 0 && (
-                      <motion.p
-                        initial={{ opacity: 0, y: -4 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        className="text-[11px] text-[#4A70B0]/70 mt-2 font-medium"
-                      >
-                        {selectedUseCases.length} use case{selectedUseCases.length > 1 ? "s" : ""} selected
-                      </motion.p>
-                    )}
-                  </div>
-                </div>
 
-                <div className="mt-8">
-                  <motion.div
-                    animate={canAdvanceStep1 ? { scale: [0.98, 1.02, 1] } : {}}
-                    transition={{ duration: 0.4 }}
-                  >
-                    <PrimaryButton onClick={goNext} disabled={!canAdvanceStep1}>
-                      Start My Audit
-                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </PrimaryButton>
-                  </motion.div>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: canAdvanceStep1 ? 1 : 0.4 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-center text-[11px] text-[#04080F]/40 mt-3 tracking-wide"
-                  >
-                    No credit card required
-                    <span className="mx-2 text-[#04080F]/25">•</span>
-                    Audit takes under 2 minutes
-                  </motion.p>
-                </div>
-              </StepWrapper>
-            )}
-
-            {/* Step 2 — AI Tools */}
-            {step === 2 && (
-              <StepWrapper stepKey={2}>
-                <div className="mb-8">
-                  <h1 className="text-[26px] sm:text-[30px] font-bold text-[#04080F] tracking-tight mb-2">
-                    {stepTitles[1].title}
-                  </h1>
-                  <p className="text-[13px] sm:text-[14px] text-[#04080F] font-normal leading-relaxed">
-                    {stepTitles[1].sub}
-                  </p>
-                </div>
-
-                <div className="mb-5 flex items-center justify-between">
-                  <span className="text-[12px] font-semibold text-[#04080F]/50 tracking-wide">
-                    {selectedTools.length} selected
-                  </span>
-                  {selectedTools.length > 0 && (
-                    <button
-                      onClick={() => setSelectedTools([])}
-                      className="text-[11px] text-[#4A70B0] font-medium hover:underline"
-                    >
-                      Clear all
-                    </button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 mb-6 min-w-0 overflow-hidden">
-                  {AI_TOOLS.map((tool) => {
-                    const isSelected = selectedTools.includes(tool.value);
-                    return (
-                      <motion.button
-                        key={tool.value}
-                        onClick={() => toggleTool(tool.value)}
-                        whileHover={isSelected ? {} : { y: -2 }}
-                        whileTap={{ scale: 0.97 }}
-                        className={`relative text-left p-3.5 rounded-2xl border-2 transition-all duration-200 ${
-                          isSelected
-                            ? "border-[#4A70B0] bg-[#4A70B0]/12 shadow-[0_0_0_2px_rgba(74,112,176,0.25),0_4px_16px_rgba(74,112,176,0.15)]"
-                            : "border-[#A8BDE0]/35 bg-white/70 hover:border-[#4A70B0]/40 hover:bg-white hover:shadow-[0_4px_12px_rgba(74,112,176,0.08)]"
-                        }`}
-                      >
-                        {isSelected && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                            className="absolute top-2 right-2 w-4 h-4 rounded-full bg-[#4A70B0] flex items-center justify-center shadow-[0_2px_6px_rgba(74,112,176,0.35)]"
-                          >
-                            <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                            </svg>
-                          </motion.div>
-                        )}
-                        <div className="w-8 h-8 rounded-xl mb-2.5 flex items-center justify-center" style={{ backgroundColor: `${tool.color}18` }}>
-                          <AiToolIcon svgPath={tool.svgPath} color={tool.color} />
-                        </div>
-                        <p className="text-[13px] font-semibold text-[#04080F] mb-0.5">{tool.label}</p>
-                        <p className="text-[10px] text-[#04080F]/35 font-medium">{tool.category}</p>
-                      </motion.button>
-                    );
-                  })}
-                </div>
-
-                {/* Other tools */}
-                <div className="mb-8">
-                  <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-2 uppercase">
-                    Other tools (optional)
-                  </label>
-                  <input
-                    type="text"
-                    value={customTools}
-                    onChange={(e) => setCustomTools(e.target.value)}
-                    placeholder="e.g. Jasper, Perplexity, Runway..."
-                    className="w-full px-4 py-3.5 rounded-2xl border-2 border-[#A8BDE0]/40 bg-white text-[14px] text-[#04080F] placeholder:text-[#04080F]/30 focus:outline-none focus:border-[#4A70B0] focus:bg-white focus:shadow-[0_0_0_3px_rgba(74,112,176,0.15)] transition-all duration-200"
-                  />
-                </div>
-
-                <div className="flex gap-3">
-                  <SecondaryButton onClick={goBack}>
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                    </svg>
-                    Back
-                  </SecondaryButton>
-                  <PrimaryButton onClick={goNext} disabled={!canAdvanceStep2}>
-                    Continue
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </PrimaryButton>
-                </div>
-              </StepWrapper>
-            )}
-
-            {/* Step 3 — Plans & Spend */}
-            {step === 3 && (
-              <StepWrapper stepKey={3}>
-                <div className="mb-7">
-                  <h1 className="text-[26px] sm:text-[30px] font-bold text-[#04080F] tracking-tight mb-2">
-                    {stepTitles[2].title}
-                  </h1>
-                  <p className="text-[13px] sm:text-[14px] text-[#04080F] font-medium leading-relaxed">
-                    {stepTitles[2].sub}
-                  </p>
-                  <p className="text-[12px] text-[#04080F]/50 mt-1.5 leading-relaxed">
-                    We use your current plans, billing cycle, and team size to benchmark your setup against cheaper alternatives.
-                  </p>
-                </div>
-
-                <div className="space-y-6">
-
-                  {/* Per-tool plans — now the primary section */}
-                  {selectedTools.length > 0 && (
+                    {/* Role */}
                     <div>
-                      <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-3 uppercase">
-                        Current plans
-                      </label>
-                      <div className="space-y-2.5">
-                        {selectedTools.map((toolKey) => {
-                          const tool = AI_TOOLS.find((t) => t.value === toolKey);
-                          if (!tool) return null;
-                          const plans = TOOL_PLANS[toolKey] || [];
+                      <FieldLabel>Your role</FieldLabel>
+                      <CustomSelect
+                        value={form.role}
+                        onChange={(v) => update({ role: v })}
+                        options={ROLES}
+                        placeholder="Select your role"
+                      />
+                    </div>
+
+                    {/* Monthly spend */}
+                    <div>
+                      <FieldLabel>Estimated monthly AI spend</FieldLabel>
+                      <div className="grid grid-cols-5 gap-2">
+                        {SPEND_RANGES.map((r) => {
+                          const sel = form.spendRange === r.value;
                           return (
-                            <div key={toolKey} className="flex items-center gap-3 p-3.5 bg-white/70 rounded-2xl border border-[#A8BDE0]/30 hover:border-[#4A70B0]/25 transition-colors">
-                              <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0" style={{ backgroundColor: `${tool.color}18` }}>
-                                <AiToolIcon svgPath={tool.svgPath} color={tool.color} />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="text-[13px] font-semibold text-[#04080F] mb-1.5">{tool.label}</p>
-                                <div className="flex items-center gap-2">
-                                  <div className="relative flex-1 min-w-0">
-                                    <select
-                                      value={toolPlans[toolKey] || ""}
-                                      onChange={(e) => setToolPlans((p) => ({ ...p, [toolKey]: e.target.value }))}
-                                      className="w-full text-[12px] text-[#04080F]/70 bg-[#C5D0D8]/20 border border-[#A8BDE0]/30 rounded-lg px-3 py-2 pr-8 appearance-none cursor-pointer focus:outline-none focus:border-[#4A70B0] focus:shadow-[0_0_0_2px_rgba(74,112,176,0.15)] transition-all"
-                                    >
-                                      <option value="">Select plan</option>
-                                      {plans.map((plan) => (
-                                        <option key={plan} value={plan}>{plan}</option>
-                                      ))}
-                                      <option value="not-sure">Not sure</option>
-                                    </select>
-                                    <svg className="absolute right-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#04080F]/35 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                  </div>
-                                  <div className="relative w-20 flex-shrink-0">
-                                    <select
-                                      value={toolSpend[toolKey] || ""}
-                                      onChange={(e) => setToolSpend((p) => ({ ...p, [toolKey]: e.target.value }))}
-                                      className="w-full text-[12px] text-[#04080F]/70 bg-[#C5D0D8]/20 border border-[#A8BDE0]/30 rounded-lg px-2 py-2 pr-6 appearance-none cursor-pointer focus:outline-none focus:border-[#4A70B0] focus:shadow-[0_0_0_2px_rgba(74,112,176,0.15)] transition-all text-center"
-                                    >
-                                      <option value="">$/mo</option>
-                                      <option value="0-20">$0–20</option>
-                                      <option value="20-100">$20–100</option>
-                                      <option value="100-500">$100–500</option>
-                                      <option value="500+">$500+</option>
-                                    </select>
-                                    <svg className="absolute right-1.5 top-1/2 -translate-y-1/2 w-3 h-3 text-[#04080F]/35 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-                                    </svg>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
+                            <motion.button key={r.value} onClick={() => update({ spendRange: r.value })}
+                              animate={{ y: sel ? -2 : 0, scale: 1 }}
+                              whileHover={{ y: sel ? -3 : -1.5, scale: 1.012 }}
+                              whileTap={{ scale: 0.975 }}
+                              transition={{ type: "spring", stiffness: 260, damping: 26, mass: 0.55 }}
+                              className={`relative text-left px-3 py-3 rounded-2xl border overflow-hidden ${
+                                sel
+                                  ? "border-[#5B8DBE]/35"
+                                  : "border-[#E5EDF5] hover:border-[#94B0CC]/55"
+                              }`}
+                              style={{
+                                backgroundColor: "#ffffff",
+                                boxShadow: sel
+                                  ? "0 1px 2px rgba(13,33,55,0.04), 0 8px 20px -6px rgba(91,141,190,0.26), 0 22px 46px -18px rgba(13,33,55,0.18)"
+                                  : "0 1px 2px rgba(13,33,55,0.03), 0 2px 6px -2px rgba(91,141,190,0.06)",
+                                transition: "box-shadow 520ms cubic-bezier(0.16, 1, 0.3, 1), border-color 320ms ease-out",
+                              }}
+                            >
+                              <AnimatePresence>
+                                {sel && (
+                                  <motion.span
+                                    key="glow"
+                                    aria-hidden
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    exit={{ opacity: 0 }}
+                                    transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                                    className="absolute -top-5 -left-5 w-24 h-24 rounded-full pointer-events-none"
+                                    style={{
+                                      background: "radial-gradient(circle, rgba(13,33,55,0.1) 0%, rgba(13,33,55,0.04) 35%, transparent 70%)",
+                                      filter: "blur(20px)",
+                                    }}
+                                  />
+                                )}
+                              </AnimatePresence>
+
+                              <span
+                                aria-hidden
+                                className="absolute inset-x-0 top-0 h-2/3 pointer-events-none"
+                                style={{
+                                  opacity: sel ? 1 : 0,
+                                  background: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 100%)",
+                                  transition: "opacity 520ms cubic-bezier(0.16, 1, 0.3, 1)",
+                                }}
+                              />
+
+                              <span className={`relative btn-label-sm block mb-0.5 transition-colors ${sel ? "text-[#0D2137] font-semibold" : "text-[#3D5A73]"}`}>{r.label}</span>
+                              <span className={`relative text-[10px] transition-colors ${sel ? "text-[#5B7A99]" : "text-[#94A3B8]"}`}>{r.sub}</span>
+                            </motion.button>
                           );
                         })}
                       </div>
                     </div>
-                  )}
+
+                    {/* Use cases */}
+                    <div>
+                      <FieldLabel>How your team uses AI</FieldLabel>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {USE_CASES.map((uc) => {
+                          const sel = form.selectedUseCases.includes(uc.value);
+                          return (
+                            <motion.button key={uc.value}
+                              onClick={() => update({
+                                selectedUseCases: sel
+                                  ? form.selectedUseCases.filter((v) => v !== uc.value)
+                                  : [...form.selectedUseCases, uc.value],
+                              })}
+                              whileHover={sel ? {} : { y: -1 }}
+                              whileTap={{ scale: 0.98 }}
+                              transition={{ type: "spring", stiffness: 420, damping: 28 }}
+                              className={`relative text-left p-3.5 rounded-xl border overflow-hidden transition-colors duration-200 ${
+                                sel
+                                  ? "border-[#0D2137] bg-white shadow-[0_1px_3px_rgba(13,33,55,0.08),0_6px_18px_-6px_rgba(13,33,55,0.18)]"
+                                  : "border-[#d8e4f0] bg-white hover:border-[#0D2137]/30 shadow-[0_1px_2px_rgba(13,33,55,0.03)]"
+                              }`}
+                            >
+                              <div className="relative flex items-center gap-3">
+                                <motion.div
+                                  initial={false}
+                                  animate={{ backgroundColor: sel ? "#0D2137" : "#f4f8fc" }}
+                                  transition={{ duration: 0.2 }}
+                                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${sel ? "shadow-[inset_0_1px_0_rgba(255,255,255,0.12)]" : ""}`}
+                                >
+                                  <svg className={`w-4 h-4 transition-colors duration-200 ${sel ? "text-white" : "text-[#5B7A99]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d={uc.icon} />
+                                  </svg>
+                                </motion.div>
+                                <span className={`btn-label-xs transition-colors ${sel ? "text-[#0D2137] font-semibold" : "text-[#3D5A73]"}`}>{uc.label}</span>
+                              </div>
+                            </motion.button>
+                          );
+                        })}
+                      </div>
+                      {form.selectedUseCases.length > 0 && (
+                        <motion.p initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} className="text-[11px] text-[#5B7A99] mt-2 font-medium">
+                          {form.selectedUseCases.length} use case{form.selectedUseCases.length !== 1 ? "s" : ""} selected
+                        </motion.p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="mt-8">
+                    <BtnPrimary onClick={goNext} disabled={!canAdvance1}>
+                      Start My Audit
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </BtnPrimary>
+                    <p className="text-center text-[11px] text-[#94A3B8] mt-3">
+                      Free forever · No credit card · Takes under 2 min
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* ══════════════ STEP 2: Select Tools ══════════════ */}
+              {step === 2 && (
+                <div>
+                  <div className="mb-7">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-6 rounded-full bg-[#0D2137]" />
+                      <h1 className="text-[24px] sm:text-[28px] font-bold text-[#0D2137] tracking-tight leading-tight">
+                        Select your AI tools
+                      </h1>
+                    </div>
+                    <p className="text-[13px] sm:text-[14px] text-[#5B7A99] ml-4 leading-relaxed">
+                      Pick every tool your team pays for — we&apos;ll benchmark each one.
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[11px] font-semibold text-[#5B7A99] uppercase tracking-[0.08em]">
+                      {form.selectedTools.length} tool{form.selectedTools.length !== 1 ? "s" : ""} selected
+                    </span>
+                    {form.selectedTools.length > 0 && (
+                      <button onClick={() => update({ selectedTools: [] })} className="text-[11px] font-semibold text-[#94A3B8] hover:text-[#5B7A99] transition-colors">
+                        Clear all
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 mb-6">
+                    {TOOL_DEFS.map((tool) => {
+                      const sel = form.selectedTools.includes(tool.value);
+                      return (
+                        <motion.button key={tool.value}
+                          onClick={() => toggleTool(tool.value)}
+                          animate={{ y: sel ? -2 : 0, scale: 1 }}
+                          whileHover={{ y: sel ? -3 : -1.5, scale: 1.012 }}
+                          whileTap={{ scale: 0.975 }}
+                          transition={{ type: "spring", stiffness: 260, damping: 26, mass: 0.55 }}
+                          className={`relative text-left p-3.5 rounded-2xl border overflow-hidden ${
+                            sel
+                              ? "border-[#5B8DBE]/35"
+                              : "border-[#E5EDF5] hover:border-[#94B0CC]/55"
+                          }`}
+                          style={{
+                            backgroundColor: "#ffffff",
+                            boxShadow: sel
+                              ? `0 1px 2px rgba(13,33,55,0.04), 0 8px 20px -6px rgba(91,141,190,0.28), 0 22px 46px -18px ${tool.color}3D`
+                              : "0 1px 2px rgba(13,33,55,0.03), 0 2px 6px -2px rgba(91,141,190,0.06)",
+                            transition: "box-shadow 520ms cubic-bezier(0.16, 1, 0.3, 1), border-color 320ms ease-out",
+                          }}
+                        >
+                          <AnimatePresence>
+                            {sel && (
+                              <motion.span
+                                key="glow"
+                                aria-hidden
+                                initial={{ opacity: 0 }}
+                                animate={{ opacity: 1 }}
+                                exit={{ opacity: 0 }}
+                                transition={{ duration: 0.45, ease: [0.16, 1, 0.3, 1] }}
+                                className="absolute -top-6 -left-6 w-28 h-28 rounded-full pointer-events-none"
+                                style={{
+                                  background: `radial-gradient(circle, ${tool.color}26 0%, ${tool.color}0F 35%, transparent 70%)`,
+                                  filter: "blur(20px)",
+                                }}
+                              />
+                            )}
+                          </AnimatePresence>
+
+                          <span
+                            aria-hidden
+                            className="absolute inset-x-0 top-0 h-2/3 pointer-events-none"
+                            style={{
+                              opacity: sel ? 1 : 0,
+                              background: "linear-gradient(180deg, rgba(255,255,255,0.55) 0%, transparent 100%)",
+                              transition: "opacity 520ms cubic-bezier(0.16, 1, 0.3, 1)",
+                            }}
+                          />
+
+                          <motion.div
+                            animate={{ scale: sel ? 1.05 : 1 }}
+                            transition={{ type: "spring", stiffness: 260, damping: 22, mass: 0.5 }}
+                            className="relative w-9 h-9 rounded-xl mb-3 flex items-center justify-center"
+                            style={{
+                              backgroundColor: `${tool.color}17`,
+                              boxShadow: sel
+                                ? `0 0 0 1px ${tool.color}2A, 0 3px 10px -2px ${tool.color}30, inset 0 1px 0 rgba(255,255,255,0.55)`
+                                : "inset 0 1px 0 rgba(255,255,255,0.3)",
+                              transition: "box-shadow 420ms cubic-bezier(0.16, 1, 0.3, 1)",
+                            }}
+                          >
+                            <ToolIcon path={tool.svgPath} color={tool.color} size={16} />
+                          </motion.div>
+                          <p className="relative text-[12px] font-bold text-[#0D2137] mb-0.5 leading-tight">{tool.label}</p>
+                          <p className="relative text-[10px] text-[#94A3B8]">{tool.category}</p>
+                        </motion.button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Custom tools */}
+                  <div className="mb-8">
+                    <FieldLabel>Other tools (optional)</FieldLabel>
+                    <input
+                      type="text"
+                      value={form.customTools.join(", ")}
+                      onChange={(e) => update({
+                        customTools: e.target.value.split(",").map((t) => t.trim()).filter(Boolean),
+                      })}
+                      placeholder="e.g. Jasper, Perplexity, Runway, Vercel AI..."
+                      className="w-full px-4 py-3 rounded-xl border border-[#c8d8e8] bg-[#f4f8fc] text-[14px] text-[#0D2137] placeholder:text-[#94A3B8] focus:outline-none focus:border-[#0D2137] focus:ring-[2px] focus:ring-[#0D2137]/10 transition-all"
+                    />
+                    <p className="text-[10px] text-[#94A3B8] mt-1.5">Comma-separated</p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <BtnSecondary onClick={goBack}>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                      </svg>
+                      Back
+                    </BtnSecondary>
+                    <BtnPrimary onClick={goNext} disabled={!canAdvance2}>
+                      Configure tools
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </BtnPrimary>
+                  </div>
+                </div>
+              )}
+
+              {/* ══════════════ STEP 3: Configure & Review ══════════════ */}
+              {step === 3 && (
+                <div>
+                  <div className="mb-7">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className="w-1.5 h-6 rounded-full bg-[#10A37F]" />
+                      <h1 className="text-[24px] sm:text-[28px] font-bold text-[#0D2137] tracking-tight leading-tight">
+                        Configure your tools
+                      </h1>
+                    </div>
+                    <p className="text-[13px] sm:text-[14px] text-[#5B7A99] ml-4 leading-relaxed">
+                      Set up each tool so we can generate accurate recommendations.
+                    </p>
+                  </div>
+
+                  {/* Tool config cards */}
+                  <div className="space-y-2 mb-6">
+                    <FieldLabel>Tool configuration</FieldLabel>
+                    <AnimatePresence>
+                      {form.selectedTools.map((toolKey) => {
+                        const tool = TOOL_DEFS.find((t) => t.value === toolKey);
+                        if (!tool) return null;
+                        const validation = toolValidation.perTool[toolKey] ?? {
+                          valid: false,
+                          missing: ["plan", "spend"],
+                          requiresSeats: false,
+                        };
+                        return (
+                          <ToolConfigCard
+                            key={toolKey}
+                            tool={tool}
+                            config={form.toolConfigs[toolKey] || { plan: "", monthlySpend: null, seats: null }}
+                            validation={validation}
+                            onChange={(updated) => updateToolConfig(toolKey, updated)}
+                          />
+                        );
+                      })}
+                    </AnimatePresence>
+                  </div>
 
                   {/* Billing cycle */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-3 uppercase">
-                      Billing cycle
-                    </label>
+                  <div className="mb-6">
+                    <FieldLabel>Billing cycle</FieldLabel>
                     <div className="grid grid-cols-2 gap-2">
-                      {BILLING_CYCLES.map((cycle) => (
-                        <motion.button
-                          key={cycle.value}
-                          onClick={() => setBillingCycle(cycle.value)}
-                          whileHover={billingCycle !== cycle.value ? { y: -2, scale: 1.01 } : {}}
+                      {[
+                        { value: "monthly", label: "Monthly" },
+                        { value: "annual",  label: "Annual", sub: "Save ~20%" },
+                      ].map((b) => (
+                        <motion.button key={b.value}
+                          onClick={() => update({ billingCycle: b.value })}
+                          whileHover={form.billingCycle !== b.value ? { y: -2, scale: 1.01 } : {}}
                           whileTap={{ scale: 0.98 }}
-                          className={`relative py-3.5 rounded-2xl border-2 font-semibold text-[13px] transition-all duration-200 ${
-                            billingCycle === cycle.value
-                              ? "border-[#4A70B0] bg-gradient-to-b from-[#4A70B0] to-[#3E5F96] text-white shadow-[0_4px_14px_rgba(74,112,176,0.35),0_0_0_1px_rgba(74,112,176,0.3)] scale-[1.01]"
-                              : "border-[#A8BDE0]/35 bg-white text-[#04080F] hover:border-[#4A70B0]/50 hover:shadow-[0_4px_12px_rgba(74,112,176,0.1)]"
+                          className={`btn-label-sm py-3.5 rounded-xl border transition-all duration-150 ${
+                            form.billingCycle === b.value
+                              ? "border-[#0D2137] bg-[#0D2137] text-white scale-[1.01]"
+                              : "border-[#c8d8e8] bg-white text-[#3D5A73] hover:border-[#b0c4d8]"
                           }`}
                         >
-                          {cycle.label}
+                          {b.label}{b.sub ? ` · ${b.sub}` : ""}
                         </motion.button>
                       ))}
                     </div>
                   </div>
 
-                  {/* Total monthly budget */}
-                  <div>
-                    <label className="block text-[12px] font-semibold text-[#04080F]/60 tracking-wide mb-3 uppercase">
-                      Total monthly AI budget
-                      <span className="ml-1 normal-case font-normal text-[#04080F]/35">(rough estimate)</span>
-                    </label>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {BUDGET_RANGES.map((range, i) => (
-                        <motion.button
-                          key={i}
-                          onClick={() => setBudgetRange(budgetRange === i ? null : i)}
-                          whileHover={budgetRange !== i ? { y: -2, scale: 1.01 } : {}}
-                          whileTap={{ scale: 0.98 }}
-                          className={`relative py-3 px-3 rounded-2xl border-2 font-semibold text-[12px] transition-all duration-200 ${
-                            budgetRange === i
-                              ? "border-[#4A70B0] bg-[#4A70B0]/10 text-[#4A70B0] shadow-[0_0_0_2px_rgba(74,112,176,0.2),0_4px_14px_rgba(74,112,176,0.15)] scale-[1.01]"
-                              : "border-[#A8BDE0]/35 bg-white text-[#04080F]/70 hover:border-[#4A70B0]/40 hover:shadow-[0_4px_12px_rgba(74,112,176,0.08)]"
-                          }`}
-                        >
-                          {budgetRange === i && (
-                            <motion.div
-                              initial={{ scale: 0 }}
-                              animate={{ scale: 1 }}
-                              className="absolute top-1.5 right-1.5 w-4 h-4 rounded-full bg-[#4A70B0] flex items-center justify-center"
-                            >
-                              <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                              </svg>
-                            </motion.div>
-                          )}
-                          <span className="block text-center leading-tight">{range.label}</span>
-                        </motion.button>
-                      ))}
+                  {/* Audit summary */}
+                  <div className="bg-[#f4f8fc] rounded-xl border border-[#d8e4f0] p-5 mb-6">
+                    <p className="text-[11px] font-bold text-[#5B7A99] uppercase tracking-[0.1em] mb-4">Audit summary</p>
+
+                    <div className="space-y-0">
+                      <ReviewRow
+                        iconPath="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
+                        label="Company" value={form.companyName || "—"} color="#5B8DBE"
+                      />
+                      <ReviewRow
+                        iconPath="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"
+                        label="Tools selected" value={`${form.selectedTools.length} tools · ${configuredCount} configured`} color="#5B8DBE"
+                      />
+                      <ReviewRow
+                        iconPath="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                        label="Billing" value={form.billingCycle === "annual" ? "Annual" : "Monthly"} color="#10A37F"
+                      />
+                      <ReviewRow
+                        iconPath="M13 10V3L4 14h7v7l9-11h-7z"
+                        label="Est. score" value={`${optScore}/100 — ${toolValidation.allValid ? "ready to audit" : `${toolValidation.incompleteCount} tool${toolValidation.incompleteCount !== 1 ? "s" : ""} need${toolValidation.incompleteCount === 1 ? "s" : ""} config`}`} color="#C97E4A"
+                      />
                     </div>
                   </div>
-                </div>
 
-                <div className="mt-8">
-                  <PrimaryButton onClick={goNext} disabled={!canAdvanceStep3}>
-                    Generate Audit Report
-                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                    </svg>
-                  </PrimaryButton>
-                  <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: canAdvanceStep3 ? 1 : 0.4 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-center text-[11px] text-[#04080F]/40 mt-3 tracking-wide"
-                  >
-                    No credit card required
-                    <span className="mx-2 text-[#04080F]/25">•</span>
-                    Audit takes under 2 minutes
-                  </motion.p>
-                </div>
-              </StepWrapper>
-            )}
-
-            {/* Step 4 — Review & Submit */}
-            {step === 4 && (
-              <StepWrapper stepKey={4}>
-                {!submitted ? (
-                  <>
-                    <div className="mb-8">
-                      <h1 className="text-[26px] sm:text-[30px] font-bold text-[#04080F] tracking-tight mb-2">
-                        {stepTitles[3].title}
-                      </h1>
-                      <p className="text-[13px] sm:text-[14px] text-[#04080F] font-normal leading-relaxed">
-                        {stepTitles[3].sub}
-                      </p>
-                    </div>
-
-                    {/* Summary cards */}
-                    <div className="space-y-3 mb-6">
-                      {/* Est. score */}
-                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-[#A8BDE0]/35 p-5">
-                        <div className="flex items-center justify-between mb-3">
-                          <p className="text-[12px] font-semibold text-[#04080F]/50 uppercase tracking-wide">Optimization score</p>
-                          <span className="text-[11px] text-[#4A70B0] font-semibold bg-[#4A70B0]/8 px-2.5 py-1 rounded-full border border-[#4A70B0]/15">
-                            Estimated
-                          </span>
-                        </div>
-                        <div className="flex items-end gap-3">
-                          <motion.span
-                            key={optScore}
-                            initial={{ opacity: 0, y: 10 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="text-[36px] font-bold text-[#4A70B0] tracking-tight leading-none"
-                          >
-                            {optScore}
-                          </motion.span>
-                          <span className="text-[13px] text-[#04080F]/40 mb-1.5">/ 100</span>
-                        </div>
-                        <div className="mt-2.5 h-1.5 bg-[#A8BDE0]/20 rounded-full overflow-hidden">
-                          <motion.div
-                            initial={{ width: 0 }}
-                            animate={{ width: `${optScore}%` }}
-                            transition={{ duration: 0.8, delay: 0.3 }}
-                            className="h-full rounded-full bg-gradient-to-r from-[#4A70B0] to-[#8BB4DC]"
-                          />
-                        </div>
-                        <p className="text-[11px] text-[#04080F]/35 mt-2">
-                          Based on {selectedTools.length} tools and {selectedBudget?.label}
-                        </p>
-                      </div>
-
-                      {/* Est. savings */}
-                      <div className="bg-gradient-to-br from-[#4A70B0]/8 to-[#8BB4DC]/8 rounded-2xl border border-[#4A70B0]/20 p-5">
-                        <p className="text-[12px] font-semibold text-[#4A70B0]/70 uppercase tracking-wide mb-2">
-                          Estimated monthly savings
-                        </p>
-                        <p className="text-[26px] font-bold text-[#4A70B0] tracking-tight">
-                          ${estSavingsLow.toLocaleString()}–${estSavingsHigh.toLocaleString()}
-                        </p>
-                        <p className="text-[11px] text-[#4A70B0]/55 mt-1">Based on typical optimization opportunities for {selectedBudget?.label}</p>
-                      </div>
-
-                      {/* Review summary */}
-                      <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-[#A8BDE0]/35 p-5 space-y-3">
-                        <div className="flex items-start gap-3">
-                          <div className="w-7 h-7 rounded-xl bg-[#4A70B0]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <svg className="w-3.5 h-3.5 text-[#4A70B0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-[12px] text-[#04080F]/50 mb-0.5">Company</p>
-                            <p className="text-[13px] font-semibold text-[#04080F]">{companyName}</p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                          <div className="w-7 h-7 rounded-xl bg-[#8BB4DC]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <svg className="w-3.5 h-3.5 text-[#8BB4DC]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-[12px] text-[#04080F]/50 mb-0.5">Tools selected</p>
-                            <p className="text-[13px] font-semibold text-[#04080F]">
-                              {selectedTools.map((t) => AI_TOOLS.find((a) => a.value === t)?.label).filter(Boolean).join(", ")}
-                              {customTools ? `, ${customTools}` : ""}
-                            </p>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start gap-3">
-                          <div className="w-7 h-7 rounded-xl bg-[#A8BDE0]/15 flex items-center justify-center flex-shrink-0 mt-0.5">
-                            <svg className="w-3.5 h-3.5 text-[#6B91C4]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                          <div>
-                            <p className="text-[12px] text-[#04080F]/50 mb-0.5">Budget</p>
-                            <p className="text-[13px] font-semibold text-[#04080F]">
-                              {selectedBudget?.label} · {billingCycle === "annual" ? "Annual" : "Monthly"}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* What's included */}
-                      <div className="bg-[#C5D0D8]/20 rounded-2xl border border-[#A8BDE0]/25 p-4">
-                        <p className="text-[11px] font-semibold text-[#04080F]/50 uppercase tracking-wide mb-3">Your audit will include</p>
-                        <div className="grid grid-cols-2 gap-2">
-                          {[
-                            "Per-tool savings breakdown",
-                            "Plan optimization suggestions",
-                            "Team spend attribution",
-                            "AI-generated plain-English summary",
-                            "Shareable PDF report",
-                            "Actionable recommendations",
-                          ].map((item) => (
-                            <div key={item} className="flex items-center gap-2">
-                              <svg className="w-3.5 h-3.5 text-[#4A70B0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                              </svg>
-                              <span className="text-[11px] text-[#04080F]/55">{item}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="flex gap-3">
-                      <SecondaryButton onClick={goBack}>
-                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
-                        </svg>
-                        Back
-                      </SecondaryButton>
-                      <PrimaryButton onClick={handleSubmit} disabled={submitting} loading={submitting}>
-                        {submitting ? "Analyzing your spend…" : "Generate Audit Report"}
-                        {!submitting && (
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  {/* What's included */}
+                  <div className="bg-[#f4f8fc] rounded-xl border border-[#d8e4f0] p-5 mb-6">
+                    <p className="text-[11px] font-bold text-[#5B7A99] uppercase tracking-[0.1em] mb-3">Your audit will include</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        "Per-tool savings breakdown",
+                        "Plan optimization suggestions",
+                        "AI-generated plain-English summary",
+                        "Actionable recommendations",
+                        "Shareable PDF report",
+                        "Team spend attribution",
+                      ].map((item) => (
+                        <div key={item} className="flex items-center gap-2">
+                          <svg className="w-3 h-3 text-[#10A37F] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                           </svg>
-                        )}
-                      </PrimaryButton>
+                          <span className="text-[11px] text-[#3D5A73]">{item}</span>
+                        </div>
+                      ))}
                     </div>
-                  </>
-                ) : (
-                  /* Success state */
-                  <motion.div
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    transition={{ duration: 0.5 }}
-                    className="text-center py-8"
-                  >
-                    <motion.div
-                      initial={{ scale: 0 }}
-                      animate={{ scale: 1 }}
-                      transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-                      className="w-16 h-16 rounded-full bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] flex items-center justify-center mx-auto mb-6 shadow-glow-xl"
-                    >
-                      <svg className="w-8 h-8 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <BtnSecondary onClick={goBack}>
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
                       </svg>
+                      Back
+                    </BtnSecondary>
+                    <BtnPrimary onClick={handleSubmit} disabled={!canSubmit} loading={submitting}>
+                      Generate Audit Report
+                      <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                      </svg>
+                    </BtnPrimary>
+                  </div>
+                  {!canSubmit && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 4 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25 }}
+                      className="mt-3 max-w-md mx-auto text-center"
+                    >
+                      <p className="text-[12px] text-[#5B7A99] leading-relaxed">
+                        <svg className="inline w-3.5 h-3.5 mr-1.5 -mt-0.5 text-[#5B8DBE]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        </svg>
+                        {form.selectedTools.length === 0
+                          ? "Select at least one tool to continue."
+                          : "Complete all selected tool configurations to generate accurate optimization recommendations."}
+                      </p>
+                      {form.selectedTools.length > 0 && toolValidation.incompleteCount > 0 && (
+                        <p className="text-[11px] text-[#94A3B8] mt-1">
+                          {toolValidation.incompleteCount} tool{toolValidation.incompleteCount !== 1 ? "s" : ""} still need{toolValidation.incompleteCount === 1 ? "s" : ""} setup
+                        </p>
+                      )}
                     </motion.div>
+                  )}
+                </div>
+              )}
 
-                    <h2 className="text-[24px] sm:text-[28px] font-bold text-[#04080F] mb-3">
-                      Audit report generating…
-                    </h2>
-                    <p className="text-[14px] sm:text-[15px] text-[#04080F]/55 font-light max-w-sm mx-auto mb-8">
-                      We're analyzing your {selectedTools.length} tools and generating your personalized report. This usually takes under 30 seconds.
-                    </p>
-
-                    <div className="bg-white/80 backdrop-blur-sm rounded-2xl border border-[#A8BDE0]/35 p-6 max-w-sm mx-auto">
-                      <div className="space-y-3">
-                        {[
-                          { label: "Benchmarking plans", done: true },
-                          { label: "Finding redundancies", done: true },
-                          { label: "Calculating savings", done: true },
-                          { label: "Generating summary", done: false },
-                        ].map((item, i) => (
-                          <motion.div
-                            key={item.label}
-                            initial={{ opacity: 0, x: -10 }}
-                            animate={{ opacity: 1, x: 0 }}
-                            transition={{ delay: 0.3 + i * 0.15 }}
-                            className="flex items-center gap-3"
-                          >
-                            <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${item.done ? "bg-[#4A70B0]/10" : "bg-[#A8BDE0]/20"}`}>
-                              {item.done ? (
-                                <svg className="w-3 h-3 text-[#4A70B0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                                </svg>
-                              ) : (
-                                <motion.div
-                                  animate={{ rotate: 360 }}
-                                  transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                                  className="w-3 h-3 border-2 border-[#A8BDE0]/50 border-t-[#A8BDE0] rounded-full"
-                                />
-                              )}
-                            </div>
-                            <span className={`text-[13px] ${item.done ? "text-[#04080F]/55" : "text-[#04080F]/35"}`}>{item.label}</span>
-                          </motion.div>
-                        ))}
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </StepWrapper>
-            )}
-          </motion.div>
-        </AnimatePresence>
+            </motion.div>
+          </AnimatePresence>
         </div>
       </div>
     </div>

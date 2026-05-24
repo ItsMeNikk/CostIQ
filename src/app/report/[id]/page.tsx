@@ -290,22 +290,57 @@ function RecCard({ rec, delay }: { rec: Recommendation; delay: number }) {
 
 /* ─── AI Insights ──────────────────────────────────────────────────── */
 
+interface AISummary {
+  diagnosis: string;
+  biggestSavingsLabel: string;
+  biggestSavingsImpact: string;
+  additionalLevers: string[];
+  closing: string;
+}
+
 function AIInsights({
   report,
-  summaryText,
+  summary,
   summaryLoading,
   summarySource,
 }: {
   report: AuditReport;
-  summaryText: string;
+  summary: AISummary | null;
   summaryLoading: boolean;
   summarySource: "ai" | "fallback" | "static";
 }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-40px" });
-  const savingsPct = report.totalMonthlySpend > 0
-    ? Math.round((report.totalMonthlySavings / report.totalMonthlySpend) * 100)
-    : 0;
+
+  const biggest = [...report.recommendations].sort((a, b) => b.monthlySavings - a.monthlySavings)[0];
+
+  const categoryChips = (() => {
+    const seen = new Set<string>();
+    const out: { label: string; savings: number; tone: "high" | "mid" | "soft" }[] = [];
+    const order: Record<string, "high" | "mid" | "soft"> = {
+      "High savings": "high",
+      "Billing optimization": "mid",
+      "Quick win": "soft",
+      "Medium impact": "soft",
+    };
+    const consolidationRecs = report.recommendations.filter((r) => r.category === "consolidation");
+    if (consolidationRecs.length > 0) {
+      const total = consolidationRecs.reduce((s, r) => s + r.monthlySavings, 0);
+      out.push({ label: "Consolidation", savings: total, tone: "high" });
+      seen.add("Consolidation");
+    }
+    for (const r of [...report.recommendations].sort((a, b) => b.monthlySavings - a.monthlySavings)) {
+      if (seen.has(r.priorityLabel)) continue;
+      seen.add(r.priorityLabel);
+      const tone = order[r.priorityLabel] ?? "soft";
+      const tally = report.recommendations
+        .filter((x) => x.priorityLabel === r.priorityLabel)
+        .reduce((s, x) => s + x.monthlySavings, 0);
+      out.push({ label: r.priorityLabel, savings: tally, tone });
+      if (out.length >= 4) break;
+    }
+    return out;
+  })();
 
   return (
     <motion.div
@@ -322,74 +357,131 @@ function AIInsights({
       <div className="absolute top-[-40px] left-[-20px] w-[280px] h-[280px] bg-[#1a3a5c] rounded-full blur-[80px]" />
       <div className="absolute bottom-[-30px] right-[-10px] w-[200px] h-[200px] bg-[#1a3a5c] rounded-full blur-[60px]" />
 
-      <div className="relative z-10 p-7 sm:p-8 lg:p-9">
-        <div className="flex items-start gap-5">
-          <div className="w-11 h-11 rounded-xl bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
-            <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-            </svg>
+      <div className="relative z-10 p-6 sm:p-7 lg:p-8">
+        {/* Header */}
+        <div className="flex items-center justify-between gap-3 mb-5 flex-wrap">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.75}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+              </svg>
+            </div>
+            <span className="text-[11px] font-bold uppercase tracking-[0.14em] text-white/65">Executive summary</span>
           </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2.5 mb-4 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-white/55">
-                Executive summary
-              </span>
+          <span className="inline-flex items-center gap-1.5 text-[9.5px] font-medium tracking-[0.02em] text-white/55">
+            <span className={`w-1 h-1 rounded-full ${summarySource === "ai" ? "bg-[#10A37F] animate-pulse" : "bg-white/30"}`} />
+            {summaryLoading
+              ? "Generating…"
+              : summarySource === "ai"
+                ? "AI · Llama 3.3"
+                : "Deterministic fallback"}
+          </span>
+        </div>
+
+        {summaryLoading || !summary ? (
+          <div className="mb-5 space-y-2.5" aria-live="polite" aria-busy="true">
+            <div className="h-3.5 w-[88%] rounded ai-shimmer" />
+            <div className="h-3.5 w-[72%] rounded ai-shimmer" />
+            <div className="h-16 w-full rounded-lg ai-shimmer mt-4" />
+            <div className="h-3.5 w-[78%] rounded ai-shimmer mt-4" />
+          </div>
+        ) : (
+          <>
+            {/* Diagnosis */}
+            <p className="text-[14.5px] sm:text-[15.5px] text-white/92 font-normal leading-[1.7] tracking-[-0.005em] max-w-[60ch] mb-4">
+              {summary.diagnosis}
+            </p>
+
+            {/* Key Insight block */}
+            <div className="rounded-xl bg-white/[0.04] border border-white/10 p-4 mb-4">
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.14em] text-[#34D399] mb-2">Key insight</p>
+              <div className="flex items-start justify-between gap-3 mb-2 flex-wrap">
+                <p className="text-[14px] sm:text-[14.5px] font-semibold text-white leading-snug">
+                  {summary.biggestSavingsLabel}
+                </p>
+                <span className="text-[11px] font-semibold text-[#34D399] bg-[#10A37F]/15 border border-[#10A37F]/30 px-2 py-0.5 rounded-full whitespace-nowrap">
+                  {summary.biggestSavingsImpact}
+                </span>
+              </div>
+              {summary.additionalLevers.length > 0 && (
+                <div>
+                  <p className="text-[10.5px] uppercase tracking-[0.08em] font-semibold text-white/40 mb-1.5 mt-3">Additional levers</p>
+                  <ul className="space-y-1">
+                    {summary.additionalLevers.map((lever, i) => (
+                      <li key={i} className="text-[12.5px] text-white/70 leading-relaxed flex items-start gap-2">
+                        <span className="text-white/35 mt-0.5">·</span>
+                        <span>{lever}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
+
+            {/* Closing */}
+            <p className="text-[13.5px] text-white/75 leading-[1.65] max-w-[60ch] mb-5 italic">
+              {summary.closing}
+            </p>
+          </>
+        )}
+
+        {/* Metric strip */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-px bg-white/10 rounded-xl overflow-hidden border border-white/10 mb-5">
+          <div className="bg-[#0D2137] p-3.5 sm:p-4">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white/45 mb-1.5">Monthly spend</p>
+            <p className="text-[19px] sm:text-[21px] font-bold text-white tracking-tight">${report.totalMonthlySpend.toLocaleString()}</p>
+          </div>
+          <div className="bg-[#0D2137] p-3.5 sm:p-4">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white/45 mb-1.5">Annual savings</p>
+            <p className="text-[19px] sm:text-[21px] font-bold text-[#34D399] tracking-tight">
+              {report.totalAnnualSavings >= 1000 ? `$${(report.totalAnnualSavings / 1000).toFixed(1)}K` : `$${report.totalAnnualSavings}`}
+            </p>
+          </div>
+          <div className="bg-[#0D2137] p-3.5 sm:p-4">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white/45 mb-1.5">Score</p>
+            <p className="text-[19px] sm:text-[21px] font-bold text-white tracking-tight">
+              {report.optimizationScore}
+              <span className="text-[12px] font-medium text-white/45 ml-0.5">/100</span>
+            </p>
+          </div>
+          <div className="bg-[#0D2137] p-3.5 sm:p-4">
+            <p className="text-[9.5px] font-semibold uppercase tracking-[0.1em] text-white/45 mb-1.5">Top opportunity</p>
+            <p className="text-[12.5px] sm:text-[13px] font-semibold text-white tracking-tight leading-snug line-clamp-2">
+              {biggest ? biggest.recommendation : "—"}
+            </p>
+            <p className="text-[10.5px] text-[#34D399] font-medium mt-1">
+              {biggest ? `+$${biggest.monthlySavings}/mo · $${biggest.annualSavings.toLocaleString()}/yr` : "No material savings"}
+            </p>
+          </div>
+        </div>
+
+        {/* Category chips */}
+        {categoryChips.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mb-4">
+            {categoryChips.map((c) => (
               <span
-                className={`inline-flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full border ${
-                  summarySource === "ai"
+                key={c.label}
+                className={`inline-flex items-center gap-1.5 text-[10.5px] font-semibold px-2.5 py-1 rounded-full border ${
+                  c.tone === "high"
                     ? "bg-[#10A37F]/15 text-[#34D399] border-[#10A37F]/30"
-                    : summarySource === "fallback"
-                      ? "bg-white/8 text-white/60 border-white/15"
-                      : "bg-white/8 text-white/55 border-white/15"
+                    : c.tone === "mid"
+                      ? "bg-[#5B8DBE]/15 text-[#7AB3E0] border-[#5B8DBE]/30"
+                      : "bg-white/8 text-white/70 border-white/15"
                 }`}
               >
-                <span className={`w-1.5 h-1.5 rounded-full ${summarySource === "ai" ? "bg-[#10A37F] animate-pulse" : "bg-white/40"}`} />
-                {summaryLoading
-                  ? "Generating…"
-                  : summarySource === "ai"
-                    ? "Generated by Claude"
-                    : "Deterministic fallback"}
+                {c.label}
+                {c.savings > 0 && <span className="opacity-70 font-medium">· ${c.savings.toLocaleString()}/mo</span>}
               </span>
-            </div>
-
-            {summaryLoading ? (
-              <div className="mb-6 space-y-2.5" aria-live="polite" aria-busy="true">
-                <div className="h-3.5 w-[92%] rounded ai-shimmer" />
-                <div className="h-3.5 w-[88%] rounded ai-shimmer" />
-                <div className="h-3.5 w-[70%] rounded ai-shimmer" />
-              </div>
-            ) : (
-              <p className="text-[15px] sm:text-[16.5px] text-white/92 font-medium leading-[1.7] tracking-[-0.005em] max-w-[62ch] mb-6">
-                {summaryText}
-              </p>
-            )}
-
-            {report.keyInsights.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-6">
-                {report.keyInsights.map((insight, i) => (
-                  <span key={i} className="text-[11px] font-medium text-white/70 bg-white/10 px-3 py-1.5 rounded-full border border-white/15">
-                    {insight}
-                  </span>
-                ))}
-              </div>
-            )}
-
-            <div className="grid grid-cols-3 gap-4">
-              {[
-                { label: "Potential savings", value: `$${report.totalMonthlySavings.toLocaleString()}`, sub: "/month" },
-                { label: "Annual savings", value: report.totalAnnualSavings >= 1000 ? `$${(report.totalAnnualSavings / 1000).toFixed(0)}K` : `$${report.totalAnnualSavings}`, sub: "/year" },
-                { label: "Optimization gap", value: `${savingsPct}%`, sub: "of current spend" },
-              ].map((m) => (
-                <div key={m.label} className="bg-white/8 rounded-xl p-4 border border-white/10">
-                  <p className="text-[10px] font-semibold uppercase tracking-[0.1em] text-white/45 mb-2">{m.label}</p>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-[22px] sm:text-[26px] font-bold text-white">{m.value}</span>
-                    <span className="text-[12px] text-white/50">{m.sub}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
+            ))}
           </div>
+        )}
+
+        {/* Trust footer */}
+        <div className="pt-4 border-t border-white/10 flex items-center gap-2 text-[10.5px] text-white/40">
+          <svg className="w-3 h-3 text-white/40" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75l6 6 9-13.5M3 12a9 9 0 1118 0 9 9 0 01-18 0z" />
+          </svg>
+          Based on verified pricing data from official vendor pages · {new Date(report.pricingMetadata.verifiedDate).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
         </div>
       </div>
     </motion.div>
@@ -698,7 +790,7 @@ export default function ReportPage() {
 
   const reportUsable = hasUsableReportData(report) && access.state === "unlocked";
 
-  const [aiSummary, setAiSummary] = useState<string>(report.summary);
+  const [aiSummary, setAiSummary] = useState<AISummary | null>(null);
   const [summaryLoading, setSummaryLoading] = useState(false);
   const [summarySource, setSummarySource] = useState<"ai" | "fallback" | "static">("static");
 
@@ -708,16 +800,19 @@ export default function ReportPage() {
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
-        const parsed = JSON.parse(cached) as { summary: string; source: "ai" | "fallback" };
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: deferred sessionStorage read
-        setAiSummary(parsed.summary);
-        setSummarySource(parsed.source);
-        return;
+        const parsed = JSON.parse(cached) as { summary: AISummary; source: "ai" | "fallback" };
+        if (parsed && parsed.summary && typeof parsed.summary === "object") {
+          // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: deferred sessionStorage read
+          setAiSummary(parsed.summary);
+          setSummarySource(parsed.source);
+          return;
+        }
       }
     } catch {}
 
     const controller = new AbortController();
     setSummaryLoading(true);
+    setAiSummary(null);
 
     const payload = {
       totalMonthlySpend: report.totalMonthlySpend,
@@ -737,27 +832,65 @@ export default function ReportPage() {
       })),
     };
 
-    fetch("/api/summary", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-      signal: controller.signal,
-    })
-      .then((r) => r.json())
-      .then((data: { summary?: string; source?: "ai" | "fallback" }) => {
-        if (typeof data.summary === "string" && data.summary.trim()) {
-          const source = data.source === "ai" ? "ai" : "fallback";
-          setAiSummary(data.summary);
-          setSummarySource(source);
+    (async () => {
+      try {
+        const res = await fetch("/api/summary", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+          signal: controller.signal,
+        });
+        if (!res.body) throw new Error("No response body");
+
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let finalStructured: AISummary | null = null;
+        let finalSource: "ai" | "fallback" = "fallback";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+
+          let newlineIndex: number;
+          while ((newlineIndex = buffer.indexOf("\n")) !== -1) {
+            const line = buffer.slice(0, newlineIndex).trim();
+            buffer = buffer.slice(newlineIndex + 1);
+            if (!line) continue;
+            try {
+              const event = JSON.parse(line) as
+                | { type: "structured"; value: AISummary }
+                | { type: "done"; source: "ai" | "fallback"; error?: string };
+              if (event.type === "structured") {
+                finalStructured = event.value;
+              } else if (event.type === "done") {
+                finalSource = event.source;
+              }
+            } catch {
+              // ignore malformed line
+            }
+          }
+        }
+
+        if (finalStructured) {
+          setAiSummary(finalStructured);
+          setSummarySource(finalSource);
           try {
-            sessionStorage.setItem(cacheKey, JSON.stringify({ summary: data.summary, source }));
+            sessionStorage.setItem(
+              cacheKey,
+              JSON.stringify({ summary: finalStructured, source: finalSource }),
+            );
           } catch {}
         }
-      })
-      .catch(() => {
-        // Network error / abort — keep deterministic report.summary already in state.
-      })
-      .finally(() => setSummaryLoading(false));
+      } catch (err) {
+        if ((err as { name?: string })?.name !== "AbortError") {
+          setSummarySource("static");
+        }
+      } finally {
+        setSummaryLoading(false);
+      }
+    })();
 
     return () => controller.abort();
   }, [reportId, reportUsable, report, auditData?.teamSize, auditData?.billingCycle]);
@@ -801,13 +934,39 @@ export default function ReportPage() {
     setModalOpen(false);
   }, [reportId]);
 
-  const handleModalSubmit = useCallback((email: string) => {
+  const handleModalSubmit = useCallback(async (email: string, company?: string) => {
+    const token = access.state === "unlocked" ? (access.data as { shareToken?: string }).shareToken : null;
+    const reportUrl = token && reportId
+      ? buildShareUrl(reportId, token, window.location.origin)
+      : window.location.href;
+
+    try {
+      const res = await fetch("/api/send-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email,
+          company,
+          monthlySavings: report.totalMonthlySavings,
+          annualSavings: report.totalAnnualSavings,
+          reportUrl,
+        }),
+      });
+      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; error?: string };
+      if (!res.ok || !data.ok) {
+        throw new Error(data.error || "We couldn't send the email. Please try again.");
+      }
+    } catch (err) {
+      console.error("[handleModalSubmit] send-email failed:", err);
+      throw err;
+    }
+
     try {
       localStorage.setItem(CAPTURED_EMAIL_KEY, email);
     } catch {}
     sealModal();
     showToast(`Report sent to ${email}`);
-  }, [sealModal, showToast]);
+  }, [sealModal, showToast, access, reportId, report.totalMonthlySavings, report.totalAnnualSavings]);
 
   const handleExportPDF = () => {
     if (!modalSealed) {
@@ -1018,7 +1177,7 @@ export default function ReportPage() {
         </div>
 
         {/* AI Insights */}
-        <AIInsights report={report} summaryText={aiSummary} summaryLoading={summaryLoading} summarySource={summarySource} />
+        <AIInsights report={report} summary={aiSummary} summaryLoading={summaryLoading} summarySource={summarySource} />
 
         {/* Recommendations */}
         {report.recommendations.length > 0 ? (
