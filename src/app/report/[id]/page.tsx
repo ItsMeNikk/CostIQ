@@ -142,12 +142,12 @@ function getDefaultReport(): AuditReport {
       },
     ],
     providerBreakdown: [
-      { name: "OpenAI / ChatGPT",  color: "#10A37F", currentSpend: 680, pct: 34, category: "LLM",       auditNotes: ["Per-seat structure priced at the published rate for 8 active seats.", "Seat count exceeds active team headcount; right-sizing recommended."] },
-      { name: "Anthropic / Claude", color: "#C97E4A", currentSpend: 440, pct: 22, category: "LLM",       auditNotes: ["Plan tier (Team) is appropriately sized for current usage.", "Overlaps with another LLM in the stack; consolidation would remove redundant spend."] },
-      { name: "GitHub Copilot",  color: "#24292F", currentSpend: 380, pct: 19, category: "Code",      auditNotes: ["Monthly billing carries unnecessary overhead — annual pricing on this plan would reduce recurring cost without workflow changes.", "Overlaps with another Code tool in the stack; consolidation would remove redundant spend."] },
-      { name: "Cursor",           color: "#1a1a1a",  currentSpend: 220, pct: 11, category: "IDE / AI", auditNotes: ["Plan tier (Business) is appropriately sized for current usage.", "Overlaps with another IDE / AI tool in the stack; consolidation would remove redundant spend."] },
-      { name: "Gemini",           color: "#8E75B2",  currentSpend: 190, pct: 9,  category: "LLM",       auditNotes: ["Current plan tier is not the most cost-efficient at this usage level."] },
-      { name: "Other",            color: "#94A3B8",  currentSpend: 100, pct: 5,  category: "Other",    auditNotes: ["No redundant tooling detected in this category."] },
+      { name: "OpenAI / ChatGPT",  color: "#10A37F", currentSpend: 680, pct: 34, category: "LLM" },
+      { name: "Anthropic / Claude", color: "#C97E4A", currentSpend: 440, pct: 22, category: "LLM" },
+      { name: "GitHub Copilot",  color: "#24292F", currentSpend: 380, pct: 19, category: "Code" },
+      { name: "Cursor",           color: "#1a1a1a",  currentSpend: 220, pct: 11, category: "IDE / AI" },
+      { name: "Gemini",           color: "#8E75B2",  currentSpend: 190, pct: 9,  category: "LLM" },
+      { name: "Other",            color: "#94A3B8",  currentSpend: 100, pct: 5,  category: "Other" },
     ],
     summary: "Analyzed 5 AI tools across a 10-person team. Found 5 optimization opportunities totaling $480/mo in potential savings.",
     keyInsights: [
@@ -754,46 +754,13 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!reportId) return;
-    let cancelled = false;
-
-    // 1) Fast path — same-tab/session lookup.
-    const initial = resolveAccess(reportId, urlToken);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: defer sessionStorage reads to post-mount
-    setAccess(initial);
+    setAccess(resolveAccess(reportId, urlToken));
     if (sessionStorage.getItem(MODAL_SEAL_PREFIX + reportId) === "1") {
       setModalSealed(true);
     } else {
       setModalSealed(false);
     }
-
-    // 2) Cross-device fallback — when the local cache is empty and the URL
-    //    carries a share token, hydrate from the server.
-    if (initial.state === "not-found" && urlToken) {
-      (async () => {
-        try {
-          const res = await fetch(
-            `/api/reports?id=${encodeURIComponent(reportId)}&share=${encodeURIComponent(urlToken)}`,
-            { cache: "no-store" },
-          );
-          if (!res.ok) return;
-          const json = (await res.json()) as { ok?: boolean; data?: unknown };
-          if (!json.ok || !json.data || typeof json.data !== "object") return;
-          if (cancelled) return;
-
-          // Persist into the same key the resolver reads from, then re-resolve.
-          try {
-            sessionStorage.setItem(reportStorageKey(reportId), JSON.stringify(json.data));
-          } catch {}
-          if (!cancelled) setAccess(resolveAccess(reportId, urlToken));
-        } catch {
-          // Network failure → leave as not-found, the UI already handles it.
-        }
-      })();
-    }
-
-    return () => {
-      cancelled = true;
-    };
   }, [reportId, urlToken]);
 
   useEffect(() => {
@@ -1363,17 +1330,6 @@ export default function ReportPage() {
                         <span className="text-[#0D2137] font-semibold">{verified}</span>
                       </div>
                     </div>
-
-                    {p.auditNotes && p.auditNotes.length > 0 && (
-                      <div className="mb-3 pt-3 border-t border-[#eef2f7] space-y-1.5">
-                        {p.auditNotes.map((note, idx) => (
-                          <div key={idx} className="flex items-start gap-2">
-                            <span className="mt-1 w-1 h-1 rounded-full bg-[#94A3B8] flex-shrink-0" />
-                            <p className="text-[11.5px] leading-snug text-[#3D5A73]">{note}</p>
-                          </div>
-                        ))}
-                      </div>
-                    )}
 
                     <div className="pt-3 border-t border-[#eef2f7] flex items-center justify-between">
                       <span className={`inline-flex items-center gap-1.5 text-[10.5px] font-bold px-2 py-1 rounded-full ${isOptimized ? "bg-[#10A37F]/10 text-[#10A37F]" : "bg-[#F59E0B]/10 text-[#92400E]"}`}>
