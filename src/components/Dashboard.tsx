@@ -63,8 +63,8 @@ function DonutChart({ segments, size = 120, strokeWidth = 18 }: {
   );
 
   return (
-    <div ref={ref} className="flex items-center gap-5">
-      <svg width={size} height={size} className="transform -rotate-90">
+    <div ref={ref} className="flex-shrink-0">
+      <svg width={size} height={size} className="transform -rotate-90 block">
         {arcs.map(({ seg, dashLen, dashGap, segOffset }) => (
             <motion.circle
               key={seg.label}
@@ -85,18 +85,6 @@ function DonutChart({ segments, size = 120, strokeWidth = 18 }: {
         ))}
         <circle cx={cx} cy={cy} r={radius - strokeWidth / 2 - 4} fill="transparent" />
       </svg>
-      <div className="space-y-2">
-        {segments.map((seg) => {
-          const pct = Math.round((seg.value / total) * 100);
-          return (
-            <div key={seg.label} className="flex items-center gap-2">
-              <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
-              <span className="text-[11px] text-[#03045e]/60 font-medium">{seg.label}</span>
-              <span className="text-[11px] text-[#03045e]/45 ml-auto pl-4 font-mono">{pct}%</span>
-            </div>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -398,15 +386,16 @@ export default function Dashboard() {
                   className="bg-[#90e0ef]/10 rounded-2xl border border-[#00b4d8]/25 p-4 sm:p-5"
                 >
                   <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#03045e] mb-4">Spend by tool</h4>
-                  <div className="flex items-center gap-4 sm:gap-6">
+                  <div className="flex flex-col items-center sm:flex-row sm:items-center gap-5 sm:gap-6">
                     <DonutChart segments={providerBreakdown} size={90} strokeWidth={14} />
-                    <div className="flex-1 space-y-2.5">
+                    <div className="flex-1 w-full space-y-2.5">
                       {providerBreakdown.map((seg, i) => {
                         const pct = seg.value / providerBreakdown.reduce((s, x) => s + x.value, 0);
                         return (
                           <div key={seg.label} className="flex items-center gap-2">
-                            <div className="w-16 text-[11px] text-[#03045e]/60 font-medium">{seg.label}</div>
-                            <div className="flex-1 h-1 bg-[#48cae4]/15 rounded-full overflow-hidden">
+                            <div className="w-2 h-2 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
+                            <div className="w-14 text-[11px] text-[#03045e]/60 font-medium truncate">{seg.label}</div>
+                            <div className="flex-1 h-1 bg-[#48cae4]/15 rounded-full overflow-hidden min-w-0">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={inView ? { width: `${pct * 100}%` } : {}}
@@ -415,7 +404,7 @@ export default function Dashboard() {
                                 style={{ backgroundColor: seg.color }}
                               />
                             </div>
-                            <div className="text-[11px] text-[#03045e]/55 font-mono w-12 text-right">${seg.value}</div>
+                            <div className="text-[11px] text-[#03045e]/55 font-mono w-10 text-right tabular-nums">${seg.value}</div>
                           </div>
                         );
                       })}
