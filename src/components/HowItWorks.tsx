@@ -36,8 +36,8 @@ export default function HowItWorks() {
 
   return (
     <section id="how-it-works" className="py-16 sm:py-20 md:py-28 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#B8C4CE]/40" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#C5D0D8]/60 to-[#C5D0D8]" />
+{/* Solid background */}
+      <div className="absolute inset-0 bg-[#c8eaf2]" />
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
         <div ref={ref} className="text-center mb-12 sm:mb-16 md:mb-20">
@@ -45,25 +45,25 @@ export default function HowItWorks() {
             initial={{ opacity: 0, y: 10 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4A70B0] mb-4"
+            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#141414] mb-4"
           >
-            <span className="w-1.5 h-1.5 bg-[#4A70B0] rounded-full" />
+            <span className="w-1.5 h-1.5 bg-[#141414] rounded-full" />
             How it works
           </motion.span>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[28px] xs:text-[32px] sm:text-[36px] md:text-[48px] font-bold tracking-tight text-[#04080F] mb-3 sm:mb-4"
+            className="text-[28px] xs:text-[32px] sm:text-[36px] md:text-[48px] font-bold tracking-tight text-[#03045e] mb-3 sm:mb-4"
           >
             From chaos to clarity in{" "}
-            <span className="text-[#4A70B0]">minutes</span>
+            <span className="text-[#141414]">minutes</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/70 font-medium max-w-lg mx-auto px-2"
+            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#03045e]/70 font-medium max-w-lg mx-auto px-2"
           >
             Add your stack, get an audit. No API keys, no integration, no waiting.
           </motion.p>
@@ -86,43 +86,43 @@ export default function HowItWorks() {
                     initial={{ scaleX: 0 }}
                     animate={inView ? { scaleX: 1 } : {}}
                     transition={{ duration: 0.6, delay: 0.5 + i * 0.18 }}
-                    className="flex-1 h-px bg-gradient-to-r from-[#4A70B0]/50 to-[#8BB4DC]/30 origin-left"
+                    className="flex-1 h-px bg-[#141414]/30"
                   />
                   <motion.div
                     initial={{ opacity: 0, x: -5 }}
                     animate={inView ? { opacity: 1, x: 0 } : {}}
                     transition={{ duration: 0.4, delay: 0.7 + i * 0.18 }}
-                    className="w-2 h-2 rounded-full bg-[#8BB4DC]/50"
+                    className="w-2 h-2 rounded-full bg-[#48cae4]/50"
                   />
                 </div>
               )}
 
-              <div className="relative z-10 bg-white/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-[#A8BDE0]/40 p-6 sm:p-7 md:p-8 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 group overflow-hidden">
+              <div className="relative z-10 bg-[#ebebeb]/90 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-[#48cae4]/40 p-6 sm:p-7 md:p-8 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 group overflow-hidden">
                 {/* Step badge */}
                 <div className="flex items-center gap-3 mb-5 sm:mb-6">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#4A70B0]/10 to-[#8BB4DC]/10 border border-[#4A70B0]/15 flex items-center justify-center group-hover:border-[#4A70B0]/30 group-hover:from-[#4A70B0]/15 transition-all duration-200">
-                    <svg className="w-5 h-5 text-[#4A70B0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <div className="w-12 h-12 rounded-2xl bg-[#141414]/10 border border-[#141414]/15 flex items-center justify-center group-hover:border-[#141414]/30 transition-all duration-200">
+                    <svg className="w-5 h-5 text-[#141414]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       {step.icon}
                     </svg>
                   </div>
                   <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-bold text-[#4A70B0] bg-[#4A70B0]/8 px-2 py-0.5 rounded-md border border-[#4A70B0]/15 w-fit">{step.number}</span>
-                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#04080F]/45">{step.label}</span>
+                    <span className="text-[10px] font-bold text-[#141414] bg-[#141414]/8 px-2 py-0.5 rounded-md border border-[#141414]/15 w-fit">{step.number}</span>
+                    <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#03045e]/45">{step.label}</span>
                   </div>
                 </div>
 
-                <h3 className="text-[16px] sm:text-[18px] md:text-[20px] font-semibold text-[#04080F] mb-2.5 tracking-tight leading-tight">{step.title}</h3>
-                <p className="text-[13px] sm:text-[14px] text-[#04080F] font-medium leading-relaxed mb-5">{step.description}</p>
+                <h3 className="text-[16px] sm:text-[18px] md:text-[20px] font-semibold text-[#03045e] mb-2.5 tracking-tight leading-tight">{step.title}</h3>
+                <p className="text-[13px] sm:text-[14px] text-[#03045e] font-medium leading-relaxed mb-5">{step.description}</p>
 
                 <div className="flex items-center gap-2 mt-auto">
-                  <div className="w-1.5 h-1.5 rounded-full bg-[#4A70B0]/30" />
-                  <span className="text-[12px] text-[#4A70B0] font-medium bg-[#4A70B0]/8 px-3 py-1.5 rounded-lg border border-[#4A70B0]/15">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#141414]/30" />
+                  <span className="text-[12px] text-[#141414] font-medium bg-[#141414]/8 px-3 py-1.5 rounded-lg border border-[#141414]/15">
                     {step.detail}
                   </span>
                 </div>
 
                 {/* Bottom accent line */}
-                <div className="absolute bottom-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#4A70B0]/15 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+                <div className="absolute bottom-0 left-6 right-6 h-px bg-[#141414]/15 scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
               </div>
             </motion.div>
           ))}
@@ -140,8 +140,8 @@ export default function HowItWorks() {
             { icon: "M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z", text: "Audit ready in under 2 minutes" },
             { icon: "M11.48 3.499a.562.562 0 011.04 0l2.125 5.877a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z", text: "Trusted by 2,400+ teams" },
           ].map((item) => (
-            <div key={item.text} className="flex items-center gap-2 text-[12px] sm:text-[13px] text-[#04080F]/55 font-medium">
-              <svg className="w-4 h-4 text-[#4A70B0] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+            <div key={item.text} className="flex items-center gap-2 text-[12px] sm:text-[13px] text-[#03045e]/55 font-medium">
+              <svg className="w-4 h-4 text-[#141414] flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d={item.icon} />
               </svg>
               {item.text}

@@ -50,36 +50,21 @@ export default function Hero() {
 
   return (
     <section ref={sectionRef} className="relative w-full overflow-hidden">
-      {/* Rich layered gradient bg */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#B8C4CE] via-[#C0CACE] to-[#B8C4CE]" />
+      {/* Solid background */}
+      <div className="absolute inset-0 bg-[#c8eaf2]" />
       <div className="absolute inset-0 grid-bg" />
 
       {/* Layered depth orbs — mouse parallax */}
-      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-[#4A70B0]/10 rounded-full blur-[100px] animate-pulse sm:w-[250px] sm:h-[250px] sm:blur-[80px] transition-transform duration-1000 ease-out will-change-transform" style={{ animationDelay: "0s" }} />
-      <div ref={orb2Ref} className="absolute bottom-1/3 right-1/4 w-[350px] h-[350px] bg-[#8BB4DC]/15 rounded-full blur-[80px] animate-pulse sm:hidden transition-transform duration-1000 ease-out will-change-transform" style={{ animationDelay: "2s" }} />
-      <div className="absolute top-[-10%] left-1/2 -translate-x-1/2 w-full max-w-[900px] h-[600px] bg-gradient-to-b from-[#8BB4DC]/15 via-[#A8BDE0]/10 to-transparent rounded-[0_0_100%_100%] sm:max-w-[600px] sm:h-[400px]" />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[700px] aspect-square bg-[#4A70B0]/5 rounded-full blur-[160px] sm:max-w-[400px] sm:blur-[100px]" />
+      <div ref={orb1Ref} className="absolute top-1/4 left-1/4 w-[400px] h-[400px] bg-[#0096c7]/10 rounded-full blur-[100px] animate-pulse sm:w-[250px] sm:h-[250px] sm:blur-[80px] transition-transform duration-1000 ease-out will-change-transform" style={{ animationDelay: "0s" }} />
+      <div ref={orb2Ref} className="absolute bottom-1/3 right-1/4 w-[350px] h-[350px] bg-[#48cae4]/15 rounded-full blur-[80px] animate-pulse sm:hidden transition-transform duration-1000 ease-out will-change-transform" style={{ animationDelay: "2s" }} />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[700px] aspect-square bg-[#0096c7]/5 rounded-full blur-[160px] sm:max-w-[400px] sm:blur-[100px]" />
 
-      {/* Animated gradient glow behind headline */}
-      <div
-        ref={glowRef}
-        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[300px] pointer-events-none will-change-transform"
-        style={{ transition: "transform 0.8s ease-out" }}
-      >
-        <div
-          className="absolute inset-0 rounded-full"
-          style={{
-            background: "radial-gradient(ellipse at center, rgba(74,112,176,0.12) 0%, rgba(74,112,176,0.05) 40%, transparent 70%)",
-            animation: "glowPulse 4s ease-in-out infinite",
-          }}
-        />
-      </div>
-
+      
       {/* Floating AI tool badges — desktop only */}
       {floatingIcons.map((icon) => (
         <motion.div
           key={icon.label}
-          className="absolute hidden lg:flex items-center gap-2 px-4 py-2.5 bg-white/80 backdrop-blur-xl rounded-2xl shadow-card border border-[#A8BDE0]/30"
+          className="absolute hidden lg:flex items-center gap-2 px-4 py-2.5 bg-[#ebebeb]/80 backdrop-blur-xl rounded-2xl shadow-card border border-[#48cae4]/30"
           style={{ left: icon.x, top: icon.y }}
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1, y: [0, -14, 0] }}
@@ -89,12 +74,12 @@ export default function Hero() {
             y: { delay: icon.delay, duration: 10 + icon.delay, repeat: Infinity, ease: "easeInOut" },
           }}
         >
-          <div className="w-5 h-5 rounded-md bg-gradient-to-br from-[#4A70B0]/20 to-[#8BB4DC]/20 flex items-center justify-center">
-            <svg className="w-3 h-3 text-[#4A70B0]" viewBox="0 0 24 24" fill="currentColor">
+          <div className="w-5 h-5 rounded-md bg-[#141414]/20 flex items-center justify-center">
+            <svg className="w-3 h-3 text-[#141414]" viewBox="0 0 24 24" fill="currentColor">
               <path d={iconSvgPaths[icon.label]} />
             </svg>
           </div>
-          <span className="text-[12px] font-semibold text-[#04080F]/65 tracking-wide">{icon.label}</span>
+          <span className="text-[12px] font-semibold text-[#03045e]/65 tracking-wide">{icon.label}</span>
         </motion.div>
       ))}
 
@@ -105,10 +90,10 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="inline-flex items-center gap-2.5 px-3.5 sm:px-4 py-1.5 bg-[#4A70B0]/10 border border-[#4A70B0]/20 rounded-full mb-8 sm:mb-10"
+          className="inline-flex items-center gap-2.5 px-3.5 sm:px-4 py-1.5 bg-[#141414]/10 border border-[#141414]/20 rounded-full mb-8 sm:mb-10"
         >
-          <span className="w-1.5 h-1.5 bg-[#4A70B0] rounded-full animate-pulse" />
-          <span className="text-[11px] sm:text-[12px] font-semibold tracking-wide text-[#4A70B0]">
+          <span className="w-1.5 h-1.5 bg-[#141414] rounded-full animate-pulse" />
+          <span className="text-[11px] sm:text-[12px] font-semibold tracking-wide text-[#141414]">
             Now in public beta — free for early teams
           </span>
         </motion.div>
@@ -116,17 +101,17 @@ export default function Hero() {
         {/* Headline with depth glow */}
         <div className="relative inline-block mb-5 sm:mb-6">
           <div className="absolute inset-0 blur-[100px] opacity-[0.08] sm:blur-[80px]">
-            <div className="w-full h-full bg-[#4A70B0] rounded-full" />
+            <div className="w-full h-full bg-[#141414] rounded-full" />
           </div>
           <motion.h1
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.1 }}
-            className="relative text-[36px] xs:text-[44px] sm:text-[52px] md:text-[72px] lg:text-[80px] font-bold tracking-tight leading-[1.08] sm:leading-[1.05] text-[#04080F]"
+            className="relative text-[36px] xs:text-[44px] sm:text-[52px] md:text-[72px] lg:text-[80px] font-bold tracking-tight leading-[1.08] sm:leading-[1.05] text-[#03045e]"
           >
             Find hidden AI costs.
             <br />
-            <span className="text-[#4A70B0]">Save more.</span> Spend smarter.
+            <span className="text-[#141414]">Save more.</span> Spend smarter.
           </motion.h1>
         </div>
 
@@ -135,7 +120,7 @@ export default function Hero() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.2 }}
-          className="text-[15px] sm:text-[16px] md:text-[19px] text-[#04080F]/55 max-w-2xl mx-auto leading-relaxed mb-10 sm:mb-14 font-light px-2"
+          className="text-[15px] sm:text-[16px] md:text-[19px] text-[#03045e]/75 max-w-2xl mx-auto leading-relaxed mb-10 sm:mb-14 font-light px-2"
         >
           CostIQ analyzes your AI subscriptions and cloud credits to uncover
           overspending and smarter alternatives — in minutes, not months.
@@ -151,46 +136,40 @@ export default function Hero() {
           {/* Primary CTA */}
           <motion.a
             href="/audit"
-            whileHover={{ y: -3, scale: 1.025 }}
-            whileTap={{ scale: 0.975 }}
-            className="group relative inline-flex items-center gap-3 sm:gap-3.5 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-semibold text-[14px] sm:text-[15px] tracking-[-0.01em] text-white overflow-hidden w-full sm:w-auto justify-center"
-            style={{
-              background: "linear-gradient(135deg, #3E5F96 0%, #4A70B0 50%, #507DBC 100%)",
-              boxShadow: "0 4px 16px rgba(74,112,176,0.35), 0 2px 4px rgba(74,112,176,0.2), inset 0 1px 0 rgba(255,255,255,0.12)",
-            }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="btn-label group inline-flex items-center gap-3 sm:gap-3.5 px-7 sm:px-9 py-3.5 sm:py-4 rounded-[10px] text-white bg-[#0a0a12] hover:bg-[#14141f] transition-colors duration-200 w-full sm:w-auto justify-center"
           >
-            <div className="absolute inset-0 bg-gradient-to-b from-white/[0.07] to-transparent" />
-            <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/[0.06] to-transparent" />
-            <span className="relative z-10">Audit my AI spend</span>
-            <div className="relative z-10 flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-white/20 backdrop-blur-sm">
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
-              </svg>
-            </div>
+            <span>Audit my AI spend</span>
+            <svg
+              className="w-4 h-4 opacity-80 group-hover:translate-x-0.5 transition-transform duration-200"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
           </motion.a>
 
           {/* Secondary CTA */}
           <motion.a
-            href="#dashboard"
-            whileHover={{ y: -3, scale: 1.025 }}
-            whileTap={{ scale: 0.975 }}
-            className="group relative inline-flex items-center gap-3 sm:gap-3.5 px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl font-medium text-[14px] sm:text-[15px] tracking-[-0.01em] overflow-hidden w-full sm:w-auto justify-center"
-            style={{
-              background: "rgba(255,255,255,0.92)",
-              border: "1.5px solid rgba(168,189,224,0.55)",
-              color: "#04080F",
-              boxShadow: "0 2px 8px rgba(4,8,15,0.06), 0 1px 2px rgba(4,8,15,0.04), inset 0 1px 0 rgba(255,255,255,0.9)",
-            }}
+            href="/report/demo"
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            className="btn-label group inline-flex items-center gap-3 sm:gap-3.5 px-7 sm:px-9 py-3.5 sm:py-4 rounded-[10px] text-[#03045e] bg-white hover:bg-[#f5f6f8] border border-[#03045e]/10 transition-colors duration-200 w-full sm:w-auto justify-center"
           >
-            <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200" style={{ background: "rgba(74,112,176,0.04)" }} />
-            <div className="absolute inset-0 rounded-2xl border border-[#4A70B0]/0 group-hover:border-[#4A70B0]/40 transition-colors duration-200" />
-            <div className="relative z-10 flex items-center justify-center w-8 h-8 sm:w-9 sm:h-9 rounded-xl" style={{ background: "rgba(74,112,176,0.1)" }}>
-              <svg className="w-3.5 h-3.5" style={{ color: "#4A70B0" }} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            </div>
-            <span className="relative z-10 font-medium">View sample report</span>
+            <svg
+              className="w-4 h-4 text-[#03045e]/70"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span>View sample report</span>
           </motion.a>
         </motion.div>
 
@@ -199,49 +178,32 @@ export default function Hero() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, delay: 0.5 }}
-          className="mt-14 sm:mt-20 flex flex-col items-center gap-4 sm:gap-5"
+          className="mt-10 sm:mt-12 flex flex-wrap items-center justify-center gap-5 sm:gap-8"
         >
-          {/* Avatar + text row */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4">
-            {/* Avatar group */}
-            <div className="flex items-center">
-              {[
-                { color: "#4A70B0", initials: "SC" },
-                { color: "#8BB4DC", initials: "MT" },
-                { color: "#A8BDE0", initials: "PP" },
-                { color: "#6B91C4", initials: "JK" },
-                { color: "#3E5F96", initials: "AL" },
-              ].map((avatar, i) => (
-                <div
-                  key={i}
-                  className="relative flex items-center justify-center rounded-full border-[2px] border-white shadow-sm overflow-hidden"
-                  style={{
-                    width: "36px",
-                    height: "36px",
-                    marginLeft: i === 0 ? "0" : "-10px",
-                    zIndex: 5 - i,
-                    backgroundColor: avatar.color,
-                  }}
-                >
-                  <span className="text-white font-bold text-[10px] sm:text-[11px]">{avatar.initials}</span>
-                  <div className="absolute inset-0 bg-gradient-to-b from-white/10 to-transparent rounded-full" />
-                </div>
-              ))}
+          {[
+            {
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M11.48 3.499a.562.562 0 011.04 0l2.125 5.877a.563.563 0 00.475.345l5.518.442c.499.04.701.663.321.988l-4.204 3.602a.563.563 0 00-.182.557l1.285 5.385a.562.562 0 01-.84.61l-4.725-2.885a.563.563 0 00-.586 0L6.982 20.54a.562.562 0 01-.84-.61l1.285-5.386a.562.562 0 00-.182-.557l-4.204-3.602a.563.563 0 01.321-.988l5.518-.442a.563.563 0 00.475-.345L11.48 3.5z" />,
+              text: "Trusted by 2,400+ teams",
+              color: "#0466c8",
+            },
+            {
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75m-3-7.036A11.959 11.959 0 013.598 6 11.99 11.99 0 003 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285z" />,
+              text: "100% private — no data stored",
+              color: "#48cae4",
+            },
+            {
+              icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />,
+              text: "Audit ready in under 2 min",
+              color: "#00b4d8",
+            },
+          ].map((item) => (
+            <div key={item.text} className="flex items-center gap-2 text-[12px] sm:text-[13px] text-[#03045e]/55 font-medium">
+              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke={item.color} strokeWidth={1.5}>
+                {item.icon}
+              </svg>
+              {item.text}
             </div>
-
-            {/* Separator */}
-            <div className="hidden sm:block w-px h-6 bg-[#A8BDE0]/50" />
-
-            {/* Text */}
-            <p className="text-[13px] sm:text-[14px] text-[#04080F]/75 font-medium leading-tight text-center sm:text-left">
-              <span className="font-bold text-[#04080F]">2,400+</span> engineering teams already auditing smarter
-            </p>
-          </div>
-
-          {/* Supporting detail */}
-          <p className="text-[11px] sm:text-[12px] text-[#04080F]/45 tracking-wide text-center px-4">
-            {HERO_TRUST_LINE}
-          </p>
+          ))}
         </motion.div>
       </div>
 

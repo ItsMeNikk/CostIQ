@@ -1,6 +1,7 @@
 "use client";
 
 import { motion, useInView } from "framer-motion";
+import Link from "next/link";
 import { useRef } from "react";
 
 const footerLinks = {
@@ -35,12 +36,12 @@ export default function Footer() {
         <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
           {/* Brand column */}
           <div className="col-span-2">
-            <a href="/" className="flex items-center gap-2.5 mb-4 -ml-1">
-              <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] flex items-center justify-center shadow-btn-primary">
+            <Link href="/" className="flex items-center gap-2.5 mb-4 -ml-1">
+              <div className="w-8 h-8 rounded-xl bg-[#141414] flex items-center justify-center shadow-btn-primary">
                 <span className="text-white font-bold text-sm tracking-tight">$</span>
               </div>
               <span className="font-semibold text-[15px] tracking-tight text-white">CostIQ</span>
-            </a>
+            </Link>
             <p className="text-[13px] text-white/50 leading-relaxed max-w-xs mb-6 font-light">
               AI spend auditing for engineering teams who want to stop guessing and start optimizing.
             </p>
@@ -63,7 +64,7 @@ export default function Footer() {
                   key={social.label}
                   href="#"
                   aria-label={social.label}
-                  className="w-8 h-8 rounded-lg bg-white/8 border border-white/12 flex items-center justify-center text-white/35 hover:text-[#8BB4DC] hover:border-[#8BB4DC]/30 hover:bg-white/12 transition-colors duration-200"
+                  className="w-8 h-8 rounded-lg bg-white/8 border border-white/12 flex items-center justify-center text-white/35 hover:text-[#48cae4] hover:border-[#48cae4]/30 hover:bg-white/12 transition-colors duration-200"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                     {social.icon}
@@ -83,7 +84,7 @@ export default function Footer() {
                   <li key={link.label}>
                     <a
                       href={link.href}
-                      className="text-[13px] text-white/45 hover:text-[#8BB4DC] transition-colors duration-200 tracking-wide"
+                      className="text-[13px] text-white/45 hover:text-[#48cae4] transition-colors duration-200 tracking-wide"
                     >
                       {link.label}
                     </a>
@@ -105,7 +106,7 @@ export default function Footer() {
             &copy; 2025 CostIQ, Inc. All rights reserved.
           </p>
           <div className="flex items-center gap-1.5">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#4A70B0] animate-pulse" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#141414] animate-pulse" />
             <span className="text-[11px] text-white/30 tracking-wide">All systems operational</span>
           </div>
         </motion.div>
