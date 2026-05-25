@@ -80,7 +80,7 @@ export interface AuditReport {
     currentSpend: number;
     pct: number;
     category: string;
-    auditNotes: string[];
+    auditNotes?: string[];
   }[];
   summary: string;
   keyInsights: string[];
