@@ -119,7 +119,12 @@ function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?:
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
 
   return (
-    <svg ref={ref as React.Ref<SVGSVGElement>} width={width} height={height} className="max-w-full h-auto overflow-hidden">
+    <svg
+      ref={ref as React.Ref<SVGSVGElement>}
+      viewBox={`0 0 ${width} ${height}`}
+      preserveAspectRatio="none"
+      className="block w-full h-auto"
+    >
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor="#141414" stopOpacity={0.2} />
@@ -285,7 +290,7 @@ export default function Dashboard() {
                 <svg className="w-2.5 h-2.5 text-[#141414]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
-                costiq.io/audit/preview
+                cost-iq-plum.vercel.app
               </div>
             </div>
             <div className="flex items-center gap-1.5">
