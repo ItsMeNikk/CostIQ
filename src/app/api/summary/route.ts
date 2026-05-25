@@ -1,6 +1,10 @@
 import { streamSummary, type SummaryInput } from "@/lib/ai/generateSummary";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
+
+// AI streaming is expensive — be stricter than the other routes.
+const IP_LIMIT = { max: 20, windowMs: 5 * 60_000 };
 
 function isValidInput(value: unknown): value is SummaryInput {
   if (!value || typeof value !== "object") return false;
@@ -20,6 +24,18 @@ function isValidInput(value: unknown): value is SummaryInput {
 }
 
 export async function POST(req: Request) {
+  const ip = getClientIp(req);
+  const gate = rateLimit("summary:ip", ip, IP_LIMIT.max, IP_LIMIT.windowMs);
+  if (!gate.ok) {
+    return new Response(
+      JSON.stringify({ error: "Too many requests — please wait a moment and try again." }),
+      {
+        status: 429,
+        headers: { "content-type": "application/json", "retry-after": String(gate.retryAfterSeconds) },
+      },
+    );
+  }
+
   let body: unknown;
   try {
     body = await req.json();

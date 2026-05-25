@@ -2,30 +2,32 @@ import Groq from "groq-sdk";
 import type { AuditReport } from "@/lib/audit-engine";
 
 const MODEL = "llama-3.3-70b-versatile";
-const MAX_TOKENS = 360;
+const MAX_TOKENS = 520;
 const TEMPERATURE = 0.35;
 
-const SYSTEM_PROMPT = `You are CostIQ, an AI spend optimization platform writing the executive summary that appears at the top of an audit report.
+const SYSTEM_PROMPT = `You are CostIQ, an AI spend optimization platform writing the executive summary at the top of an audit report.
 
-CRITICAL: The report UI displays Monthly Spend, Annual Savings, Optimization Score, and Top Opportunity as a separate metric strip. Your job is to explain WHY the numbers look the way they do and WHAT to do about it. DO NOT restate dollar figures or the score — they appear visually elsewhere.
+The report UI already shows Monthly Spend, Annual Savings, Optimization Score, and Top Opportunity as a metric strip. Your job is to explain WHY the numbers look the way they do, name the single most valuable action with its reasoning, and characterize how disciplined the existing stack is. Do not restate dollar figures or the score — those appear visually elsewhere.
 
 OUTPUT FORMAT
-You MUST return a single JSON object. No prose before or after. No markdown fences. The schema is:
+Return a single JSON object. No prose before or after. No markdown fences. Schema:
 
 {
-  "diagnosis": "ONE sentence characterizing the team and stack posture. Plain prose. ≤25 words. No dollar figures.",
-  "biggestSavingsLabel": "The biggest single optimization opportunity, named concretely (e.g. 'Unused GitHub Copilot seats', 'Cursor on monthly billing', 'Overlapping code assistants'). ≤8 words. No dollar figure.",
-  "biggestSavingsImpact": "A short impact phrase (e.g. '~$152/month', 'Quick win', 'Largest single lever'). ≤6 words.",
-  "additionalLevers": ["short phrase", "short phrase"],
-  "closing": "ONE sentence closing recommendation: the single most valuable next step. ≤25 words. No dollar figures. No promises of ROI."
+  "diagnosis": "2-3 sentences, 40-60 words total. Characterize the stack: team size in plain English, tooling maturity (lean / moderate / sprawling), the largest single opportunity in context, and whether overall savings potential is significant or modest. Mention duplicate tooling or its absence if relevant. Plain prose. No dollar figures, no percentages, no bullets.",
+  "biggestSavingsLabel": "ONE full sentence, 12-22 words, recommending the single most valuable action. Must name the specific tool and the action AND include the reasoning or workflow impact. Example: 'Switch Cursor to annual billing to reduce recurring costs with minimal workflow impact.' No dollar figures.",
+  "biggestSavingsImpact": "Short impact phrase that fits a small chip. 2-5 words. Examples: '~$152/month', 'Quick win', 'Largest single lever', 'Minimal at this scale'.",
+  "additionalLevers": ["short phrase 3-6 words", "short phrase 3-6 words"],
+  "closing": "ONE sentence, 18-30 words, recommending the next concrete step with reasoning. Name the specific tool or action. Example: 'Start with the Cursor billing switch this quarter; it ships fastest and frees the team to evaluate the next two recommendations once cost data settles.' No dollar figures, no ROI promises."
 }
 
 RULES
-- additionalLevers: 1–3 short phrases (2–5 words each). Examples: "annual billing on most tools", "reducing overlapping coding assistants", "right-sizing enterprise plans". Omit the field (use an empty array) if there are no clear secondary levers.
-- If the audit shows alreadyOptimized=true OR totalMonthlySavings<25, frame the diagnosis as "already lean / well-disciplined" and make the closing about monitoring, not migration.
-- Use ONLY tool names, categories, and findings present in the input JSON. Do not invent vendors, plans, or figures.
-- Tone: analytical, executive-level, financially honest. No hype. No marketing language.
-- NO preambles ("Here is…", "Summary:…"). NO sign-offs. NO markdown. NO code fences. Pure JSON.`;
+- diagnosis: MUST mention team size in plain English (e.g. 'small engineering team', 'mid-sized team', 'enterprise team') and a maturity read (e.g. 'lean', 'disciplined', 'sprawling', 'early-stage tooling'). If alreadyOptimized=true OR totalMonthlySavings<25, frame the stack as already lean and savings as modest — do not manufacture urgency. If duplicates exist, call them out by category (e.g. 'overlapping code assistants'). Forbidden filler: 'room for optimization', 'opportunities exist', 'savings potential', 'leverage', 'unlock value'.
+- biggestSavingsLabel: MUST be a complete recommendation sentence — never a 1-3 word label. Use verbs like 'Switch', 'Consolidate', 'Drop', 'Move to', 'Right-size'. Name the specific tool and the workflow consequence. WRONG: 'Cursor billing'. RIGHT: 'Switch Cursor to annual billing to reduce recurring costs with minimal workflow impact.'
+- additionalLevers: 1-3 concrete categories such as 'annual billing on remaining tools', 'consolidate code assistants', 'right-size per-seat plans'. Empty array if no clear secondary levers exist.
+- closing: must name a specific tool or concrete action with reasoning. If alreadyOptimized=true, frame closing around monitoring cadence and what signals to watch (e.g. 'watch for seat creep as headcount grows') rather than vendor migration.
+- Tone: analytical, executive-level, financially honest. Talk like a CFO advising on stack posture — no hype, no buzzwords, no marketing language.
+- Use ONLY tool names, categories, and findings present in the input JSON. Do not invent vendors, plans, prices, or percentages.
+- NO preambles ('Here is…'). NO sign-offs. NO markdown. NO code fences. Pure JSON.`;
 
 export interface SummaryInput {
   totalMonthlySpend: number;
@@ -129,36 +131,79 @@ export function fallbackStructured(input: SummaryInput): StructuredSummary {
     billingCycle,
   } = input;
 
-  const stackShape = toolCount <= 2
-    ? "a compact stack"
-    : toolCount <= 5
-      ? "a moderate stack"
-      : "a broad stack";
+  const stackShape =
+    toolCount <= 2 ? "a compact stack"
+      : toolCount <= 5 ? "a moderate stack"
+        : "a broad stack";
 
+  const teamPhrase =
+    teamSize === "1-5" ? "small engineering team"
+      : teamSize === "6-15" ? "mid-sized team"
+        : teamSize === "16-50" ? "growing team"
+          : teamSize === "51-200" ? "scale-up team"
+            : teamSize === "200+" ? "enterprise team"
+              : `${teamSize}-person team`;
+
+  // ── Already optimized / minimal savings branch ────────────────
   if (alreadyOptimized || totalMonthlySavings < 25) {
+    const dupRead = duplicateCount > 0
+      ? "Some overlap exists between coding assistants, but the dollar impact is small at this scale."
+      : "No duplicate tooling was detected, which suggests tools are paid for purposefully rather than accumulated.";
+
     return {
-      diagnosis: `A ${teamSize}-person team running ${stackShape} for AI work, with disciplined tool selection and no significant overspending.`,
-      biggestSavingsLabel: duplicateCount > 0 ? "Minor redundancy in current tooling" : "No material savings detected",
-      biggestSavingsImpact: "Negligible impact",
-      additionalLevers: ["periodic seat reviews", "track usage as team scales"],
-      closing: "The highest-value next step is monthly monitoring — not vendor migration — to catch new opportunities as the stack evolves.",
+      diagnosis: `Current AI spend appears disciplined for a ${teamPhrase} running ${stackShape}. ${dupRead} Overall savings potential is modest — the read of a stack that has already been pruned rather than one waiting for a cleanup pass.`,
+      biggestSavingsLabel: duplicateCount > 0
+        ? "Trim the duplicate code assistant once usage data confirms which one the team actually relies on day-to-day."
+        : "Hold the current configuration and revisit on the next billing cycle rather than chasing low-yield migrations.",
+      biggestSavingsImpact: "Minimal at this scale",
+      additionalLevers: [
+        "watch for seat creep as headcount grows",
+        "re-audit when adding any new AI tool",
+      ],
+      closing: "The right next step is a monthly spend check rather than vendor migration — the stack is already lean, and a bigger lever will appear naturally as the team scales.",
     };
   }
 
+  // ── Material-savings branch ───────────────────────────────────
   const lead = topRecommendations[0];
+  const second = topRecommendations[1];
+
+  const reasonClause = (priority: string): string =>
+    priority === "Billing optimization"
+      ? "to lock in lower recurring cost with minimal workflow impact"
+      : priority === "High savings"
+        ? "to remove the single largest source of recoverable spend"
+        : priority === "Quick win"
+          ? "for an immediate cost reduction that requires no migration"
+          : "to right-size cost against actual usage";
+
+  const leadSentence = lead
+    ? `${lead.recommendation.replace(/\.$/, "").trim()} ${reasonClause(lead.priorityLabel)}.`
+    : "Work through the prioritized recommendations starting with the highest-impact items first.";
+
   const levers: string[] = [];
-  if (billingCycle === "monthly") levers.push("switch eligible tools to annual billing");
-  if (duplicateCount > 0) levers.push("reduce overlapping coding assistants");
+  if (billingCycle === "monthly") levers.push("annual billing on remaining tools");
+  if (duplicateCount > 0) levers.push("consolidate overlapping code assistants");
   if (topRecommendations.some((r) => r.priorityLabel === "Medium impact")) levers.push("right-size per-seat plans");
+  if (second && levers.length === 0) levers.push(`address ${second.tool} after the lead change`);
+
+  const dupContext = duplicateCount > 0
+    ? "Overlapping coding assistants are the largest drag on efficiency, and consolidating them removes redundant cost without disrupting core workflows."
+    : "No duplicates were detected; the opportunities here come from billing posture and plan fit rather than redundancy.";
+
+  const savingsMagnitude =
+    totalMonthlySavings >= 200 ? "the savings potential is meaningful at this stack size"
+      : totalMonthlySavings >= 75 ? "the overall savings potential is moderate"
+        : "the overall savings potential remains modest";
 
   return {
-    diagnosis: `A ${teamSize}-person team running ${stackShape} across ${toolCount} AI tool${toolCount !== 1 ? "s" : ""}.`,
-    biggestSavingsLabel: lead ? lead.recommendation : "Multiple medium opportunities",
-    biggestSavingsImpact: lead ? `~$${lead.monthlySavings}/month` : "Spread across recs",
+    diagnosis: `A ${teamPhrase} running ${stackShape} across ${toolCount} AI tool${toolCount !== 1 ? "s" : ""}. ${dupContext} The largest opportunity is concentrated in ${lead?.tool ?? "the top recommendation"}, and ${savingsMagnitude}.`,
+    biggestSavingsLabel: leadSentence,
+    biggestSavingsImpact: lead ? `~$${lead.monthlySavings}/month lever` : "Spread across recs",
     additionalLevers: levers.slice(0, 3),
     closing: lead
-      ? `Acting on the ${lead.tool} adjustment first is the cleanest move; revisit the rest in 30 days.`
-      : "Work through the prioritized recommendations and revisit in 30 days.",
+      ? `Start with the ${lead.tool} change this quarter — it ships fastest and clears the path to evaluate the remaining recommendations once cost data settles.`
+      : "Work through the prioritized recommendations in order of impact and revisit cost posture in 30 days.",
   };
 }
 

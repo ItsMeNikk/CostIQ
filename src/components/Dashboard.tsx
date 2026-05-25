@@ -1,27 +1,7 @@
 "use client";
 
-import { motion, useInView, AnimatePresence } from "framer-motion";
-import { useRef, useState, useEffect } from "react";
-
-function useCountUp(end: number, duration: number = 2000, inView: boolean) {
-  const [count, setCount] = useState(0);
-  useEffect(() => {
-    if (!inView) return;
-    let start = 0;
-    const increment = end / (duration / 16);
-    const timer = setInterval(() => {
-      start += increment;
-      if (start >= end) {
-        setCount(end);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
-    return () => clearInterval(timer);
-  }, [end, duration, inView]);
-  return count;
-}
+import { motion, useInView } from "framer-motion";
+import { useRef, useState, useEffect, useId, useMemo } from "react";
 
 function useFloatCount(end: number, decimals: number, duration: number = 2000, inView: boolean) {
   const [count, setCount] = useState(0);
@@ -39,7 +19,7 @@ function useFloatCount(end: number, decimals: number, duration: number = 2000, i
       }
     }, 16);
     return () => clearInterval(timer);
-  }, [end, duration, inView]);
+  }, [end, duration, decimals, inView]);
   return count;
 }
 
@@ -69,18 +49,23 @@ function DonutChart({ segments, size = 120, strokeWidth = 18 }: {
   const cx = size / 2;
   const cy = size / 2;
 
-  let offset = 0;
+  const arcs = useMemo(
+    () =>
+      segments.reduce<
+        { seg: (typeof segments)[number]; dashLen: number; dashGap: number; segOffset: number }[]
+      >((acc, seg) => {
+        const dashLen = (seg.value / total) * circumference;
+        const segOffset = acc.reduce((sum, arc) => sum + arc.dashLen, 0);
+        acc.push({ seg, dashLen, dashGap: circumference - dashLen, segOffset });
+        return acc;
+      }, []),
+    [segments, total, circumference],
+  );
 
   return (
     <div ref={ref} className="flex items-center gap-5">
       <svg width={size} height={size} className="transform -rotate-90">
-        {segments.map((seg) => {
-          const pct = seg.value / total;
-          const dashLen = pct * circumference;
-          const dashGap = circumference - dashLen;
-          const segOffset = offset;
-          offset += dashLen;
-          return (
+        {arcs.map(({ seg, dashLen, dashGap, segOffset }) => (
             <motion.circle
               key={seg.label}
               cx={cx}
@@ -97,8 +82,7 @@ function DonutChart({ segments, size = 120, strokeWidth = 18 }: {
               transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
               className="transition-all duration-200"
             />
-          );
-        })}
+        ))}
         <circle cx={cx} cy={cy} r={radius - strokeWidth / 2 - 4} fill="transparent" />
       </svg>
       <div className="space-y-2">
@@ -107,8 +91,8 @@ function DonutChart({ segments, size = 120, strokeWidth = 18 }: {
           return (
             <div key={seg.label} className="flex items-center gap-2">
               <div className="w-2.5 h-2.5 rounded-sm flex-shrink-0" style={{ backgroundColor: seg.color }} />
-              <span className="text-[11px] text-[#04080F]/60 font-medium">{seg.label}</span>
-              <span className="text-[11px] text-[#04080F]/45 ml-auto pl-4 font-mono">{pct}%</span>
+              <span className="text-[11px] text-[#03045e]/60 font-medium">{seg.label}</span>
+              <span className="text-[11px] text-[#03045e]/45 ml-auto pl-4 font-mono">{pct}%</span>
             </div>
           );
         })}
@@ -120,6 +104,7 @@ function DonutChart({ segments, size = 120, strokeWidth = 18 }: {
 function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?: number; height?: number }) {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true });
+  const gradientId = `areaGrad${useId().replace(/:/g, "")}`;
   const max = Math.max(...data);
   const min = Math.min(...data);
   const range = max - min || 1;
@@ -132,14 +117,13 @@ function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?:
 
   const linePath = points.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x} ${p.y}`).join(" ");
   const areaPath = `${linePath} L ${points[points.length - 1].x} ${height} L ${points[0].x} ${height} Z`;
-  const gradientId = `areaGrad_${Math.random().toString(36).slice(2)}`;
 
   return (
     <svg ref={ref as React.Ref<SVGSVGElement>} width={width} height={height} className="max-w-full h-auto overflow-hidden">
       <defs>
         <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#4A70B0" stopOpacity={0.2} />
-          <stop offset="100%" stopColor="#4A70B0" stopOpacity={0} />
+          <stop offset="0%" stopColor="#141414" stopOpacity={0.2} />
+          <stop offset="100%" stopColor="#141414" stopOpacity={0} />
         </linearGradient>
       </defs>
       <motion.path
@@ -152,7 +136,7 @@ function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?:
       <motion.path
         d={linePath}
         fill="none"
-        stroke="#4A70B0"
+        stroke="#141414"
         strokeWidth={1.5}
         strokeLinecap="round"
         strokeLinejoin="round"
@@ -166,7 +150,7 @@ function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?:
           cx={p.x}
           cy={p.y}
           r={2.5}
-          fill="#4A70B0"
+          fill="#141414"
           initial={{ opacity: 0, scale: 0 }}
           animate={inView ? { opacity: 1, scale: 1 } : {}}
           transition={{ duration: 0.3, delay: 0.8 + i * 0.04 }}
@@ -177,9 +161,9 @@ function AreaChart({ data, width = 320, height = 80 }: { data: number[]; width?:
 }
 
 const providerBreakdown = [
-  { label: "ChatGPT", value: 480, color: "#4A70B0" },
-  { label: "Claude", value: 340, color: "#8BB4DC" },
-  { label: "Cursor", value: 220, color: "#A8BDE0" },
+  { label: "ChatGPT", value: 480, color: "#141414" },
+  { label: "Claude", value: 340, color: "#48cae4" },
+  { label: "Cursor", value: 220, color: "#00b4d8" },
   { label: "Copilot", value: 180, color: "#6B91C4" },
 ];
 
@@ -194,7 +178,7 @@ const recommendations = [
     savings: "$142/mo",
     priority: "high",
     tool: "ChatGPT",
-    toolColor: "#4A70B0",
+    toolColor: "#141414",
   },
   {
     id: 2,
@@ -203,7 +187,7 @@ const recommendations = [
     savings: "$89/mo",
     priority: "high",
     tool: "Cursor",
-    toolColor: "#8BB4DC",
+    toolColor: "#48cae4",
   },
   {
     id: 3,
@@ -212,7 +196,7 @@ const recommendations = [
     savings: "$210/yr",
     priority: "medium",
     tool: "Copilot",
-    toolColor: "#A8BDE0",
+    toolColor: "#48cae4",
   },
   {
     id: 4,
@@ -249,10 +233,9 @@ export default function Dashboard() {
 
   return (
     <section id="dashboard" className="relative overflow-hidden py-16 sm:py-20 md:py-24">
-      <div className="absolute inset-0 bg-[#C5D0D8]" />
+{/* Solid background */}
+      <div className="absolute inset-0 bg-[#b8e4ee]" />
       <div className="absolute inset-0 grid-bg opacity-20" />
-      <div className="absolute top-1/3 left-1/4 w-[400px] h-[400px] bg-[#8BB4DC]/10 rounded-full blur-3xl" />
-      <div className="absolute bottom-1/3 right-1/4 w-[300px] h-[300px] bg-[#4A70B0]/8 rounded-full blur-3xl" />
 
       <div ref={ref} className="relative max-w-6xl mx-auto px-4 sm:px-6">
         <div className="text-center mb-10 sm:mb-12 md:mb-16">
@@ -260,27 +243,27 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 10 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4A70B0] mb-4"
+            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#141414] mb-4"
           >
-            <span className="w-1.5 h-1.5 bg-[#4A70B0] rounded-full animate-pulse" />
+            <span className="w-1.5 h-1.5 bg-[#141414] rounded-full animate-pulse" />
             Sample audit report
           </motion.span>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[28px] xs:text-[32px] sm:text-[36px] md:text-[48px] font-bold tracking-tight text-[#04080F] mb-3 sm:mb-4"
+            className="text-[28px] xs:text-[32px] sm:text-[36px] md:text-[48px] font-bold tracking-tight text-[#03045e] mb-3 sm:mb-4"
           >
             Your audit report,{" "}
-            <span className="text-[#4A70B0]">ready in 2 minutes</span>
+            <span className="text-[#141414]">ready in 2 minutes</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/60 max-w-xl mx-auto font-light px-2"
+            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#03045e]/60 max-w-xl mx-auto font-light px-2"
           >
-            A real sample for a typical startup. Add your team's tools and plans — yours will look exactly like this.
+            A real sample for a typical startup. Add your team&apos;s tools and plans — yours will look exactly like this.
           </motion.p>
         </div>
 
@@ -288,31 +271,31 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 40, scale: 0.98 }}
           animate={inView ? { opacity: 1, y: 0, scale: 1 } : {}}
           transition={{ duration: 0.7, delay: 0.3 }}
-          className="bg-white/92 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-[#A8BDE0]/40 shadow-soft-xl overflow-hidden"
+          className="bg-white/92 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-[#00b4d8]/40 shadow-soft-xl overflow-hidden"
         >
           {/* Browser chrome */}
-          <div className="flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-[#A8BDE0]/25 bg-gradient-to-r from-[#C5D0D8]/50 to-white/60">
+          <div className="flex items-center gap-2 px-4 sm:px-5 py-3 border-b border-[#00b4d8]/20 bg-[#90e0ef]/50">
             <div className="flex items-center gap-1.5">
               <div className="w-2.5 h-2.5 rounded-full bg-[#FF6B6B]/60" />
               <div className="w-2.5 h-2.5 rounded-full bg-[#FFD93D]/60" />
               <div className="w-2.5 h-2.5 rounded-full bg-[#6BCB77]/60" />
             </div>
             <div className="flex-1 mx-3 sm:mx-5">
-              <div className="bg-white/80 rounded-lg px-3 py-1 text-[10px] sm:text-[11px] text-[#04080F]/40 font-mono text-center border border-[#A8BDE0]/20 flex items-center justify-center gap-1.5">
-                <svg className="w-2.5 h-2.5 text-[#4A70B0]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="bg-white/80 rounded-lg px-3 py-1 text-[10px] sm:text-[11px] text-[#03045e]/40 font-mono text-center border border-[#00b4d8]/20 flex items-center justify-center gap-1.5">
+                <svg className="w-2.5 h-2.5 text-[#141414]/50" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                 </svg>
                 costiq.io/audit/preview
               </div>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded bg-[#A8BDE0]/20 flex items-center justify-center">
-                <svg className="w-2.5 h-2.5 text-[#04080F]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-5 h-5 rounded bg-[#48cae4]/20 flex items-center justify-center">
+                <svg className="w-2.5 h-2.5 text-[#03045e]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
                 </svg>
               </div>
-              <div className="w-5 h-5 rounded bg-[#A8BDE0]/20 flex items-center justify-center">
-                <svg className="w-2.5 h-2.5 text-[#04080F]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <div className="w-5 h-5 rounded bg-[#48cae4]/20 flex items-center justify-center">
+                <svg className="w-2.5 h-2.5 text-[#03045e]/30" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
                 </svg>
               </div>
@@ -327,28 +310,28 @@ export default function Dashboard() {
                   label: "Total Monthly AI Spend",
                   value: <AnimatedNumber value={1220} prefix="$" decimals={0} />,
                   sub: "Across 4 tools",
-                  color: "text-[#04080F]",
+                  color: "text-[#03045e]",
                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />,
                 },
                 {
                   label: "Potential Savings",
                   value: <AnimatedNumber value={491} prefix="$" decimals={0} />,
                   sub: "From recommended actions",
-                  color: "text-[#4A70B0]",
+                  color: "text-[#141414]",
                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
                 },
                 {
                   label: "Optimization Score",
                   value: "58",
                   sub: "out of 100 — room to improve",
-                  color: "text-[#8BB4DC]",
+                  color: "text-[#48cae4]",
                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
                 },
                 {
                   label: "Team Size",
                   value: "8",
                   sub: "seats across all tools",
-                  color: "text-[#04080F]",
+                  color: "text-[#03045e]",
                   icon: <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />,
                 },
               ].map((kpi, i) => (
@@ -357,18 +340,18 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.4, delay: 0.4 + i * 0.08 }}
-                  className="bg-[#C5D0D8]/15 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-[#A8BDE0]/20 hover:border-[#4A70B0]/25 transition-colors group"
+                  className="bg-[#90e0ef]/15 rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-[#00b4d8]/20 hover:border-[#141414]/25 transition-colors group"
                 >
                   <div className="flex items-start justify-between mb-2">
-                    <p className="text-[10px] sm:text-[11px] text-[#04080F]/50 font-medium tracking-wide leading-tight">{kpi.label}</p>
-                    <div className="w-6 h-6 rounded-lg bg-[#A8BDE0]/15 flex items-center justify-center group-hover:bg-[#4A70B0]/10 transition-colors">
-                      <svg className="w-3 h-3 text-[#04080F]/40 group-hover:text-[#4A70B0] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <p className="text-[10px] sm:text-[11px] text-[#03045e]/50 font-medium tracking-wide leading-tight">{kpi.label}</p>
+                    <div className="w-6 h-6 rounded-lg bg-[#48cae4]/15 flex items-center justify-center group-hover:bg-[#141414]/10 transition-colors">
+                      <svg className="w-3 h-3 text-[#03045e]/40 group-hover:text-[#141414] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         {kpi.icon}
                       </svg>
                     </div>
                   </div>
                   <p className={`text-[18px] sm:text-[22px] font-bold ${kpi.color}`}>{kpi.value}</p>
-                  <p className="text-[9px] sm:text-[10px] text-[#04080F]/40 mt-0.5 leading-tight">{kpi.sub}</p>
+                  <p className="text-[9px] sm:text-[10px] text-[#03045e]/40 mt-0.5 leading-tight">{kpi.sub}</p>
                 </motion.div>
               ))}
             </div>
@@ -381,14 +364,14 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.6 }}
-                  className="bg-[#C5D0D8]/10 rounded-2xl border border-[#A8BDE0]/25 p-4 sm:p-5"
+                  className="bg-[#90e0ef]/10 rounded-2xl border border-[#00b4d8]/25 p-4 sm:p-5"
                 >
                   <div className="flex items-center justify-between mb-4">
                     <div>
-                      <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#04080F]">Estimated monthly spend trend</h4>
+                      <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#03045e]">Estimated monthly spend trend</h4>
                       <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 mt-0.5">
-                        <span className="text-[11px] text-[#4A70B0] font-semibold">+$1,205 from last year</span>
-                        <span className="text-[11px] text-[#04080F]/45">— based on typical startup growth</span>
+                        <span className="text-[11px] text-[#141414] font-semibold">+$1,205 from last year</span>
+                        <span className="text-[11px] text-[#03045e]/45">— based on typical startup growth</span>
                       </div>
                     </div>
                   </div>
@@ -397,7 +380,7 @@ export default function Dashboard() {
                   </div>
                   <div className="flex flex-wrap justify-between gap-x-1 gap-y-0.5 mt-2">
                     {monthLabels.map((m, i) => (
-                      <span key={m} className={`text-[8px] sm:text-[9px] ${i === 11 ? "text-[#4A70B0] font-medium" : "text-[#04080F]/35"}`}>{m}</span>
+                      <span key={m} className={`text-[8px] sm:text-[9px] ${i === 11 ? "text-[#141414] font-medium" : "text-[#03045e]/35"}`}>{m}</span>
                     ))}
                   </div>
                 </motion.div>
@@ -407,9 +390,9 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.7 }}
-                  className="bg-[#C5D0D8]/10 rounded-2xl border border-[#A8BDE0]/25 p-4 sm:p-5"
+                  className="bg-[#90e0ef]/10 rounded-2xl border border-[#00b4d8]/25 p-4 sm:p-5"
                 >
-                  <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#04080F] mb-4">Spend by tool</h4>
+                  <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#03045e] mb-4">Spend by tool</h4>
                   <div className="flex items-center gap-4 sm:gap-6">
                     <DonutChart segments={providerBreakdown} size={90} strokeWidth={14} />
                     <div className="flex-1 space-y-2.5">
@@ -417,8 +400,8 @@ export default function Dashboard() {
                         const pct = seg.value / providerBreakdown.reduce((s, x) => s + x.value, 0);
                         return (
                           <div key={seg.label} className="flex items-center gap-2">
-                            <div className="w-16 text-[11px] text-[#04080F]/60 font-medium">{seg.label}</div>
-                            <div className="flex-1 h-1 bg-[#A8BDE0]/15 rounded-full overflow-hidden">
+                            <div className="w-16 text-[11px] text-[#03045e]/60 font-medium">{seg.label}</div>
+                            <div className="flex-1 h-1 bg-[#48cae4]/15 rounded-full overflow-hidden">
                               <motion.div
                                 initial={{ width: 0 }}
                                 animate={inView ? { width: `${pct * 100}%` } : {}}
@@ -427,7 +410,7 @@ export default function Dashboard() {
                                 style={{ backgroundColor: seg.color }}
                               />
                             </div>
-                            <div className="text-[11px] text-[#04080F]/55 font-mono w-12 text-right">${seg.value}</div>
+                            <div className="text-[11px] text-[#03045e]/55 font-mono w-12 text-right">${seg.value}</div>
                           </div>
                         );
                       })}
@@ -442,12 +425,12 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.65 }}
-                  className="bg-[#C5D0D8]/10 rounded-2xl border border-[#A8BDE0]/25 p-4 sm:p-5"
+                  className="bg-[#90e0ef]/10 rounded-2xl border border-[#00b4d8]/25 p-4 sm:p-5"
                 >
                   <div className="flex items-center justify-between mb-3.5">
-                    <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#04080F]">Your recommendations</h4>
-                    <span className="text-[10px] sm:text-[11px] font-bold text-[#4A70B0] tabular-nums">
-                      <AnimatedNumber value={491} prefix="$" /> <span className="text-[#04080F]/45 font-normal">/mo</span>
+                    <h4 className="text-[13px] sm:text-[14px] font-semibold text-[#03045e]">Your recommendations</h4>
+                    <span className="text-[10px] sm:text-[11px] font-bold text-[#141414] tabular-nums">
+                      <AnimatedNumber value={491} prefix="$" /> <span className="text-[#03045e]/45 font-normal">/mo</span>
                     </span>
                   </div>
                   <div className="space-y-2.5">
@@ -457,22 +440,22 @@ export default function Dashboard() {
                         initial={{ opacity: 0, x: 15 }}
                         animate={inView ? { opacity: 1, x: 0 } : {}}
                         transition={{ duration: 0.4, delay: 0.75 + i * 0.08 }}
-                        className="group flex items-start gap-2.5 p-2.5 bg-white/60 rounded-xl border border-[#A8BDE0]/20 hover:border-[#4A70B0]/30 hover:bg-white transition-all duration-200 cursor-default"
+                        className="group flex items-start gap-2.5 p-2.5 bg-white/60 rounded-xl border border-[#00b4d8]/20 hover:border-[#141414]/30 hover:bg-white transition-all duration-200 cursor-default"
                       >
                         <div className={`w-6 h-6 rounded-lg flex-shrink-0 flex items-center justify-center ${
-                          rec.priority === "high" ? "bg-[#4A70B0]/10" : "bg-[#8BB4DC]/10"
+                          rec.priority === "high" ? "bg-[#141414]/10" : "bg-[#48cae4]/10"
                         }`}>
-                          <svg className={`w-3 h-3 ${rec.priority === "high" ? "text-[#4A70B0]" : "text-[#8BB4DC]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                          <svg className={`w-3 h-3 ${rec.priority === "high" ? "text-[#141414]" : "text-[#48cae4]"}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                             <path strokeLinecap="round" strokeLinejoin="round" d={rec.icon} />
                           </svg>
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-[11px] sm:text-[12px] text-[#04080F]/75 leading-relaxed">{rec.text}</p>
+                          <p className="text-[11px] sm:text-[12px] text-[#03045e]/75 leading-relaxed">{rec.text}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <span className="text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/80 border border-[#A8BDE0]/25" style={{ color: rec.toolColor }}>
+                            <span className="text-[9px] sm:text-[10px] font-medium px-1.5 py-0.5 rounded bg-white/80 border border-[#00b4d8]/25" style={{ color: rec.toolColor }}>
                               {rec.tool}
                             </span>
-                            <span className={`text-[11px] sm:text-[12px] font-bold ${rec.priority === "high" ? "text-[#4A70B0]" : "text-[#8BB4DC]"}`}>
+                            <span className={`text-[11px] sm:text-[12px] font-bold ${rec.priority === "high" ? "text-[#141414]" : "text-[#48cae4]"}`}>
                               {rec.savings}
                             </span>
                           </div>
@@ -487,15 +470,15 @@ export default function Dashboard() {
                   initial={{ opacity: 0, y: 20 }}
                   animate={inView ? { opacity: 1, y: 0 } : {}}
                   transition={{ duration: 0.5, delay: 0.8 }}
-                  className="bg-gradient-to-br from-[#4A70B0]/5 to-[#8BB4DC]/5 rounded-2xl border border-[#4A70B0]/20 p-4 sm:p-5"
+                  className="bg-[#141414]/10 rounded-2xl border border-[#141414]/20 p-4 sm:p-5"
                 >
                   <div className="flex items-center gap-2 mb-3.5">
-                    <div className="w-5 h-5 rounded-lg bg-[#4A70B0]/15 flex items-center justify-center">
-                      <svg className="w-2.5 h-2.5 text-[#4A70B0]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <div className="w-5 h-5 rounded-lg bg-[#141414]/15 flex items-center justify-center">
+                      <svg className="w-2.5 h-2.5 text-[#141414]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                       </svg>
                     </div>
-                    <h4 className="text-[12px] sm:text-[13px] font-semibold text-[#4A70B0]">AI-generated summary</h4>
+                    <h4 className="text-[12px] sm:text-[13px] font-semibold text-[#141414]">AI-generated summary</h4>
                   </div>
                   <div className="space-y-2.5">
                     {aiInsights.map((insight, i) => (
@@ -519,7 +502,7 @@ export default function Dashboard() {
                             <path strokeLinecap="round" strokeLinejoin="round" d={insight.icon} />
                           </svg>
                         </div>
-                        <p className="text-[11px] sm:text-[12px] text-[#04080F]/65 leading-relaxed font-light">{insight.text}</p>
+                        <p className="text-[11px] sm:text-[12px] text-[#03045e]/65 leading-relaxed font-light">{insight.text}</p>
                       </motion.div>
                     ))}
                   </div>

@@ -719,6 +719,23 @@ export default function AuditPage() {
       rememberOwnerToken(reportId, shareToken);
       sessionStorage.removeItem("costiq_audit");
     } catch {}
+
+    fetch("/api/reports", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: reportId,
+        shareToken,
+        companyName: form.companyName,
+        teamSize: form.teamSize,
+        role: form.role,
+        billingCycle: form.billingCycle,
+        totalMonthlySpend: totalSpend,
+        data: auditData,
+      }),
+      keepalive: true,
+    }).catch(() => {});
+
     clearForm();
     setSubmitting(true);
     setTimeout(() => router.push(`/report/${reportId}?share=${shareToken}`), 2500);

@@ -895,31 +895,6 @@ export default function ReportPage() {
     return () => controller.abort();
   }, [reportId, reportUsable, report, auditData?.teamSize, auditData?.billingCycle]);
 
-  const ctaTier: "monitoring" | "share" | "consultation" =
-    report.totalMonthlySavings >= 300 || report.optimizationScore < 65
-      ? "consultation"
-      : report.totalMonthlySavings < 50 || report.optimizationScore >= 88
-        ? "monitoring"
-        : "share";
-
-  const ctaCopy = ctaTier === "consultation"
-    ? {
-        heading: `Lock in $${report.totalMonthlySavings.toLocaleString()}/mo in savings`,
-        subline: "Talk to a CostIQ specialist about rolling out these recommendations across your team.",
-        primary: "Book a savings review",
-      }
-    : ctaTier === "monitoring"
-      ? {
-          heading: "Stay ahead of your AI spend",
-          subline: "Your stack is well-tuned. Get monthly check-ins to catch new opportunities.",
-          primary: "Get monthly alerts",
-        }
-      : {
-          heading: "Share these insights",
-          subline: "Send the report, export a PDF, or share the link with your team.",
-          primary: "Share report",
-        };
-
   useEffect(() => {
     if (modalSealed || !reportUsable) return;
     const t = setTimeout(() => setModalOpen(true), MODAL_AUTO_DELAY_MS);
@@ -947,6 +922,8 @@ export default function ReportPage() {
         body: JSON.stringify({
           email,
           company,
+          role: auditData?.role,
+          reportId,
           monthlySavings: report.totalMonthlySavings,
           annualSavings: report.totalAnnualSavings,
           reportUrl,
@@ -965,8 +942,8 @@ export default function ReportPage() {
       localStorage.setItem(CAPTURED_EMAIL_KEY, email);
     } catch {}
     sealModal();
-    showToast(`Report sent to ${email}`);
-  }, [sealModal, showToast, access, reportId, report.totalMonthlySavings, report.totalAnnualSavings]);
+    showToast("Your report has been sent to your inbox.");
+  }, [sealModal, showToast, access, reportId, report.totalMonthlySavings, report.totalAnnualSavings, auditData]);
 
   const handleExportPDF = () => {
     if (!modalSealed) {
@@ -1404,49 +1381,36 @@ export default function ReportPage() {
           </motion.div>
         )}
 
-        {/* Bottom CTA */}
+        {/* Bottom CTA — minimal */}
         <motion.div
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.9 }}
-          className="py-6 sm:py-7 no-print"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.6, ease: [0.16, 1, 0.3, 1] }}
+          className="py-8 sm:py-10 no-print flex flex-col items-center gap-3"
         >
-          <div className="bg-white rounded-2xl border border-[#d8e4f0] p-5 sm:p-6 shadow-[0_1px_4px_rgba(0,0,0,0.05),0_2px_12px_rgba(0,0,0,0.04)]">
-            <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-4">
-              <div className="flex-1 min-w-0">
-                <h3 className="text-[16px] sm:text-[17px] font-bold text-[#0D2137] tracking-tight">{ctaCopy.heading}</h3>
-                <p className="text-[12px] text-[#5B7A99] mt-1 leading-relaxed">{ctaCopy.subline}</p>
-              </div>
-              <Link href="/audit" className="self-start sm:self-center text-[12px] font-semibold text-[#5B8DBE] hover:text-[#0D2137] transition-colors inline-flex items-center gap-1 whitespace-nowrap">
-                Run another audit
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          <motion.button
+            onClick={handleCopyLink}
+            whileHover={{ y: -1 }}
+            whileTap={{ scale: 0.98 }}
+            className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-xl bg-[#0D2137] text-white text-[13px] font-semibold shadow-[0_2px_10px_rgba(13,33,55,0.25)] hover:shadow-[0_4px_18px_rgba(13,33,55,0.35)] transition-all duration-150"
+          >
+            {copied ? (
+              <>
+                <svg className="w-3.5 h-3.5 text-[#34D399]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                 </svg>
-              </Link>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-              <motion.button onClick={handleCopyLink} whileHover={{ y: -1.5 }} whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-[#0D2137] text-white text-[13px] font-semibold shadow-[0_2px_10px_rgba(13,33,55,0.25)] hover:shadow-[0_4px_18px_rgba(13,33,55,0.35)] transition-all">
+                Link copied
+              </>
+            ) : (
+              <>
                 <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
                 </svg>
-                {copied ? "Link copied!" : ctaCopy.primary}
-              </motion.button>
-              <motion.button onClick={handleExportPDF} whileHover={{ y: -1.5 }} whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-white text-[#0D2137] text-[13px] font-semibold border-[1.5px] border-[#0D2137] hover:bg-[#f4f8fc] transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.894.553l2.414 2.414A1 1 0 0119 7.414V19a2 2 0 01-2 2z" />
-                </svg>
-                Export PDF
-              </motion.button>
-              <motion.button onClick={handleEmailReport} whileHover={{ y: -1.5 }} whileTap={{ scale: 0.98 }}
-                className="flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-transparent text-[#5B7A99] text-[13px] font-semibold hover:bg-[#f4f8fc] hover:text-[#0D2137] transition-all">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M3 8l9 6 9-6M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-                </svg>
-                Email insights
-              </motion.button>
-            </div>
-            <p className="text-center text-[11px] text-[#94A3B8] mt-3">Starter is free · No credit card required</p>
-          </div>
+                Copy report link
+              </>
+            )}
+          </motion.button>
+          <p className="text-[11px] text-[#94A3B8] font-medium">Starter is free · No credit card required</p>
         </motion.div>
 
       </motion.main>

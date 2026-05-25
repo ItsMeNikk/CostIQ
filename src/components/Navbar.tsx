@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import Link from "next/link";
 
 const navLinks = [
   { label: "Features", href: "#features" },
@@ -33,20 +34,20 @@ export default function Navbar() {
     <header
       className={`fixed top-0 left-0 right-0 z-50 w-full max-w-[100vw] transition-all duration-300 ${
         scrolled
-          ? "bg-white/85 backdrop-blur-2xl border-b border-[#A8BDE0]/30 shadow-soft-md"
-          : "bg-white/60 backdrop-blur-md"
+          ? "bg-[#ebebeb]/85 backdrop-blur-2xl border-b border-[#48cae4]/30 shadow-soft-md"
+          : "bg-[#ebebeb]/60 backdrop-blur-md"
       }`}
     >
       <nav className="max-w-5xl mx-auto px-5 sm:px-8 h-[60px] sm:h-[68px] flex items-center justify-between">
         {/* Logo */}
-        <a href="/" className="flex items-center gap-2 group -ml-1">
+        <Link href="/" className="flex items-center gap-2 group -ml-1">
           <div
-            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] flex items-center justify-center shadow-btn-primary group-hover:shadow-btn-primary-hover group-hover:scale-105 transition-all duration-200"
+            className="w-7 h-7 sm:w-8 sm:h-8 rounded-xl bg-[#141414] flex items-center justify-center shadow-btn-primary group-hover:shadow-btn-primary-hover group-hover:scale-105 transition-all duration-200"
           >
             <span className="text-white font-bold text-xs sm:text-sm tracking-tight">$</span>
           </div>
-          <span className="font-semibold text-[14px] sm:text-[15px] tracking-tight text-[#04080F]">CostIQ</span>
-        </a>
+          <span className="font-semibold text-[14px] sm:text-[15px] tracking-tight text-[#03045e]">CostIQ</span>
+        </Link>
 
         {/* Desktop nav */}
         <ul className="hidden md:flex items-center gap-7 lg:gap-9">
@@ -54,7 +55,7 @@ export default function Navbar() {
             <li key={link.label}>
               <a
                 href={link.href}
-                className="text-[12px] sm:text-[13px] font-medium text-[#04080F]/55 tracking-wide hover:text-[#4A70B0] transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[1px] after:bg-[#4A70B0] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-200"
+                className="text-[12px] sm:text-[13px] font-semibold text-[#03045e]/80 tracking-wide hover:text-[#03045e] transition-colors duration-200 relative after:absolute after:bottom-[-2px] after:left-0 after:right-0 after:h-[1px] after:bg-[#03045e] after:scale-x-0 hover:after:scale-x-100 after:transition-transform after:duration-200"
               >
                 {link.label}
               </a>
@@ -66,7 +67,7 @@ export default function Navbar() {
         <div className="hidden md:flex items-center gap-2">
           <a
             href="/audit"
-            className="text-[12px] sm:text-[13px] font-semibold tracking-wide bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl shadow-btn-primary hover:shadow-btn-primary-hover hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200"
+            className="btn-label-sm bg-[#0a0a12] hover:bg-[#14141f] text-white px-4 sm:px-5 py-2 sm:py-2.5 rounded-[10px] transition-colors duration-200"
           >
             Get started free
           </a>
@@ -81,15 +82,15 @@ export default function Navbar() {
           <div className="w-6 h-5 flex flex-col justify-between">
             <motion.span
               animate={{ rotate: mobileOpen ? 45 : 0, y: mobileOpen ? 9 : 0 }}
-              className="h-[2px] bg-[#04080F] block origin-center rounded-full"
+              className="h-[2px] bg-[#03045e] block origin-center rounded-full"
             />
             <motion.span
               animate={{ opacity: mobileOpen ? 0 : 1, scaleX: mobileOpen ? 0 : 1 }}
-              className="h-[2px] bg-[#04080F] block rounded-full"
+              className="h-[2px] bg-[#03045e] block rounded-full"
             />
             <motion.span
               animate={{ rotate: mobileOpen ? -45 : 0, y: mobileOpen ? -9 : 0 }}
-              className="h-[2px] bg-[#04080F] block origin-center rounded-full"
+              className="h-[2px] bg-[#03045e] block origin-center rounded-full"
             />
           </div>
         </button>
@@ -103,7 +104,7 @@ export default function Navbar() {
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.25 }}
-            className="md:hidden bg-white/95 backdrop-blur-xl border-t border-[#A8BDE0]/30 overflow-hidden"
+            className="md:hidden bg-[#ebebeb]/95 backdrop-blur-xl border-t border-[#48cae4]/30 overflow-hidden"
           >
             <div className="px-5 py-5 flex flex-col gap-0.5">
               {navLinks.map((link) => (
@@ -111,16 +112,16 @@ export default function Navbar() {
                   key={link.label}
                   href={link.href}
                   onClick={() => setMobileOpen(false)}
-                  className="text-[14px] font-medium text-[#04080F]/60 hover:text-[#4A70B0] transition-colors py-3 block"
+                  className="text-[14px] font-medium text-[#03045e]/60 hover:text-[#03045e] transition-colors py-3 block"
                 >
                   {link.label}
                 </a>
               ))}
-              <div className="pt-4 mt-3 border-t border-[#A8BDE0]/30">
+              <div className="pt-4 mt-3 border-t border-[#48cae4]/30">
                 <a
                   href="/audit"
                   onClick={() => setMobileOpen(false)}
-                  className="text-[14px] font-semibold bg-gradient-to-br from-[#4A70B0] to-[#3E5F96] text-white px-5 py-3 rounded-xl block text-center shadow-btn-primary"
+                  className="btn-label bg-[#0a0a12] hover:bg-[#14141f] text-white px-5 py-3 rounded-[10px] block text-center transition-colors duration-200"
                 >
                   Get started free
                 </a>

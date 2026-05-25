@@ -15,7 +15,7 @@ const tools = [
   { name: "Mistral", category: "LLMs", svgPath: "M3.75 18L9 11.25l4.306 4.307a2.25 2.25 0 010-3.142l4.306-4.306L12 6l-8.25 12z", color: "#EB323B" },
   { name: "Vercel AI", category: "Developer Tools", svgPath: "M12 2L2 12l10 10 10-10L12 2zm0 4l6 6-6 6-6-6 6-6z", color: "#000000" },
   { name: "LangChain", category: "Developer Tools", svgPath: "M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4", color: "#6B91C4" },
-  { name: "Scale AI", category: "Data Platform", svgPath: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4", color: "#4A70B0" },
+  { name: "Scale AI", category: "Data Platform", svgPath: "M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4", color: "#141414" },
 ];
 
 export default function TrustedBy() {
@@ -23,14 +23,14 @@ export default function TrustedBy() {
   const inView = useInView(ref, { once: true, margin: "-100px" });
 
   return (
-    <section className="py-12 sm:py-16 border-y border-[#A8BDE0]/25 bg-white/50 backdrop-blur-sm overflow-hidden w-full">
+    <section className="py-12 sm:py-16 border-y border-[#48cae4]/25 bg-[#ebebeb]/50 backdrop-blur-sm overflow-hidden w-full">
       <div className="max-w-6xl mx-auto px-4 sm:px-6">
         <motion.p
           ref={ref}
           initial={{ opacity: 0 }}
           animate={inView ? { opacity: 1 } : {}}
           transition={{ duration: 0.5 }}
-          className="text-center text-[11px] text-[#04080F]/40 mb-6 sm:mb-8 uppercase tracking-[0.18em] font-semibold"
+          className="text-center text-[11px] text-[#03045e]/40 mb-6 sm:mb-8 uppercase tracking-[0.18em] font-semibold"
         >
           Auditing spend across your entire AI stack
         </motion.p>
@@ -47,15 +47,15 @@ export default function TrustedBy() {
               initial={{ opacity: 0, y: 8 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.4, delay: 0.1 + i * 0.04 }}
-              className="group flex flex-col items-center gap-1 sm:gap-1.5 p-3 sm:p-4 bg-white/60 rounded-xl sm:rounded-2xl border border-[#A8BDE0]/30 hover:border-[#4A70B0]/35 hover:bg-white hover:shadow-card transition-all duration-200 cursor-default"
+              className="group flex flex-col items-center gap-1 sm:gap-1.5 p-3 sm:p-4 bg-[#ebebeb]/60 rounded-xl sm:rounded-2xl border border-[#48cae4]/30 hover:borde14141466c8]/35 hover:bg-[#ebebeb] hover:shadow-card transition-all duration-200 cursor-default"
             >
               <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg flex items-center justify-center group-hover:scale-110 transition-transform duration-200" style={{ backgroundColor: `${tool.color}18` }}>
                 <svg className="w-3.5 h-3.5 sm:w-4 sm:h-4" fill="none" viewBox="0 0 24 24" stroke={tool.color} strokeWidth={1.5} aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d={tool.svgPath} />
                 </svg>
               </div>
-              <span className="text-[11px] sm:text-[13px] font-semibold text-[#04080F] text-center">{tool.name}</span>
-              <span className="text-[10px] sm:text-[11px] text-[#04080F]/60 hidden sm:block">{tool.category}</span>
+              <span className="text-[11px] sm:text-[13px] font-semibold text-[#03045e] text-center">{tool.name}</span>
+              <span className="text-[10px] sm:text-[11px] text-[#03045e]/60 hidden sm:block">{tool.category}</span>
             </motion.div>
           ))}
         </motion.div>

@@ -48,8 +48,8 @@ export default function Features() {
 
   return (
     <section id="features" className="py-16 sm:py-20 md:py-28 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[#C5D0D8]" />
-      <div className="absolute inset-0 bg-gradient-to-b from-[#B8C4CE]/60 to-[#B8C4CE]" />
+{/* Solid background */}
+      <div className="absolute inset-0 bg-[#d8eef4]" />
 
       <div className="relative max-w-6xl mx-auto px-4 sm:px-6">
         <div ref={ref} className="text-center mb-12 sm:mb-16 md:mb-20">
@@ -57,25 +57,25 @@ export default function Features() {
             initial={{ opacity: 0, y: 10 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.4 }}
-            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#4A70B0] mb-4"
+            className="inline-flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-[#141414] mb-4"
           >
-            <span className="w-1.5 h-1.5 bg-[#4A70B0] rounded-full" />
+            <span className="w-1.5 h-1.5 bg-[#141414] rounded-full" />
             What you get
           </motion.span>
           <motion.h2
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="text-[28px] xs:text-[32px] sm:text-[36px] md:text-[48px] font-bold tracking-tight text-[#04080F] mb-3 sm:mb-4"
+            className="text-[28px] xs:text-[32px] sm:text-[36px] md:text-[48px] font-bold tracking-tight text-[#03045e] mb-3 sm:mb-4"
           >
             Everything you need to{" "}
-            <span className="text-[#4A70B0]">stop overpaying</span>
+            <span className="text-[#141414]">stop overpaying</span>
           </motion.h2>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
             animate={inView ? { opacity: 1, y: 0 } : {}}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#04080F]/70 max-w-xl mx-auto font-medium px-2"
+            className="text-[14px] sm:text-[15px] md:text-[16px] text-[#03045e]/70 max-w-xl mx-auto font-medium px-2"
           >
             From first input to actionable report — no integrations, no API keys, no engineering time required.
           </motion.p>
@@ -88,25 +88,25 @@ export default function Features() {
               initial={{ opacity: 0, y: 30 }}
               animate={inView ? { opacity: 1, y: 0 } : {}}
               transition={{ duration: 0.5, delay: 0.1 + i * 0.08 }}
-              className="group relative bg-white/85 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-[#A8BDE0]/35 p-5 sm:p-7 hover:border-[#4A70B0]/40 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 overflow-hidden"
+              className="group relative bg-[#ebebeb]/85 backdrop-blur-sm rounded-2xl sm:rounded-3xl border border-[#48cae4]/35 p-5 sm:p-7 hover:border-[#141414]/40 hover:shadow-card-hover hover:-translate-y-1 transition-all duration-200 overflow-hidden"
             >
               {/* Badge */}
-              <span className="absolute top-4 sm:top-5 right-4 sm:right-5 text-[10px] font-semibold uppercase tracking-wider text-[#4A70B0] bg-[#4A70B0]/8 px-2.5 py-1 rounded-full border border-[#4A70B0]/15">
+              <span className="absolute top-4 sm:top-5 right-4 sm:right-5 text-[10px] font-semibold uppercase tracking-wider text-[#141414] bg-[#141414]/8 px-2.5 py-1 rounded-full border border-[#141414]/15">
                 {feature.badge}
               </span>
 
               {/* Icon */}
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#A8BDE0]/15 border border-[#A8BDE0]/30 flex items-center justify-center mb-5 group-hover:bg-[#4A70B0]/10 group-hover:border-[#4A70B0]/25 transition-all duration-200">
-                <svg className="w-[18px] h-[18px] text-[#04080F]/45 group-hover:text-[#4A70B0] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#48cae4]/15 border border-[#48cae4]/30 flex items-center justify-center mb-5 group-hover:bg-[#141414]/10 group-hover:border-[#141414]/25 transition-all duration-200">
+                <svg className="w-[18px] h-[18px] text-[#03045e]/45 group-hover:text-[#141414] transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   {feature.icon}
                 </svg>
               </div>
 
-              <h3 className="text-[15px] sm:text-[16px] font-semibold text-[#04080F] mb-2 pr-12 sm:pr-0">{feature.title}</h3>
-              <p className="text-[13px] sm:text-[14px] text-[#04080F] font-medium leading-relaxed">{feature.description}</p>
+              <h3 className="text-[15px] sm:text-[16px] font-semibold text-[#03045e] mb-2 pr-12 sm:pr-0">{feature.title}</h3>
+              <p className="text-[13px] sm:text-[14px] text-[#03045e] font-medium leading-relaxed">{feature.description}</p>
 
               {/* Bottom accent line */}
-              <div className="absolute bottom-0 left-6 right-6 h-px bg-gradient-to-r from-transparent via-[#4A70B0]/25 to-transparent scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
+              <div className="absolute bottom-0 left-6 right-6 h-px bg-[#141414]/25 scale-x-0 group-hover:scale-x-100 transition-transform duration-300" />
             </motion.div>
           ))}
         </div>
