@@ -754,13 +754,46 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!reportId) return;
+    let cancelled = false;
+
+    // 1) Fast path — same-tab/session lookup.
+    const initial = resolveAccess(reportId, urlToken);
     // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: defer sessionStorage reads to post-mount
-    setAccess(resolveAccess(reportId, urlToken));
+    setAccess(initial);
     if (sessionStorage.getItem(MODAL_SEAL_PREFIX + reportId) === "1") {
       setModalSealed(true);
     } else {
       setModalSealed(false);
     }
+
+    // 2) Cross-device fallback — when the local cache is empty and the URL
+    //    carries a share token, hydrate from the server.
+    if (initial.state === "not-found" && urlToken) {
+      (async () => {
+        try {
+          const res = await fetch(
+            `/api/reports?id=${encodeURIComponent(reportId)}&share=${encodeURIComponent(urlToken)}`,
+            { cache: "no-store" },
+          );
+          if (!res.ok) return;
+          const json = (await res.json()) as { ok?: boolean; data?: unknown };
+          if (!json.ok || !json.data || typeof json.data !== "object") return;
+          if (cancelled) return;
+
+          // Persist into the same key the resolver reads from, then re-resolve.
+          try {
+            sessionStorage.setItem(reportStorageKey(reportId), JSON.stringify(json.data));
+          } catch {}
+          if (!cancelled) setAccess(resolveAccess(reportId, urlToken));
+        } catch {
+          // Network failure → leave as not-found, the UI already handles it.
+        }
+      })();
+    }
+
+    return () => {
+      cancelled = true;
+    };
   }, [reportId, urlToken]);
 
   useEffect(() => {

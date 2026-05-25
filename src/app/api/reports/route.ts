@@ -9,6 +9,9 @@ export const runtime = "nodejs";
 const IP_LIMIT = { max: 15, windowMs: 10 * 60_000 };
 const ID_LIMIT = { max: 1, windowMs: 24 * 60 * 60_000 };
 
+// Reads are cheap but still gated so a hot link can't be scraped at high volume.
+const GET_IP_LIMIT = { max: 60, windowMs: 5 * 60_000 };
+
 interface SaveReportBody {
   id?: unknown;
   shareToken?: unknown;
@@ -35,6 +38,45 @@ function tooMany(retryAfterSeconds: number) {
     { ok: false, error: "Too many requests — please wait a moment and try again." },
     { status: 429, headers: { "retry-after": String(retryAfterSeconds) } },
   );
+}
+
+export async function GET(request: Request) {
+  const ip = getClientIp(request);
+  const gate = rateLimit("reports:get:ip", ip, GET_IP_LIMIT.max, GET_IP_LIMIT.windowMs);
+  if (!gate.ok) return tooMany(gate.retryAfterSeconds);
+
+  const url = new URL(request.url);
+  const id = url.searchParams.get("id");
+  const share = url.searchParams.get("share");
+
+  if (!id || !share) {
+    return NextResponse.json({ ok: false, error: "Missing id or share token" }, { status: 400 });
+  }
+
+  const supabase = getSupabase();
+  if (!supabase) {
+    return NextResponse.json({ ok: false, error: "Storage not configured" }, { status: 503 });
+  }
+
+  const { data, error } = await supabase
+    .from("reports")
+    .select("share_token, data")
+    .eq("id", id)
+    .maybeSingle();
+
+  if (error) {
+    console.warn("[reports:get] select failed:", error.message);
+    return NextResponse.json({ ok: false, error: "Lookup failed" }, { status: 500 });
+  }
+  if (!data) {
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  }
+  if (data.share_token !== share) {
+    // Treat as not-found to avoid leaking the existence of the id to scrapers.
+    return NextResponse.json({ ok: false, error: "Not found" }, { status: 404 });
+  }
+
+  return NextResponse.json({ ok: true, data: data.data });
 }
 
 export async function POST(request: Request) {
