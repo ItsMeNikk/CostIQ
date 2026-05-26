@@ -1114,7 +1114,7 @@ export default function ReportPage() {
         {reportUsable ? (
         <>
         {/* KPI Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 [&>*:last-child:nth-child(odd)]:col-span-2 sm:[&>*:last-child:nth-child(odd)]:col-span-1">
           <StatCard label="Optimization Score" value={report.optimizationScore} unit="/100" sub="based on your setup" delay={0.0} />
           <StatCard label="Monthly Savings" value={`$${report.totalMonthlySavings.toLocaleString()}`} sub="after optimization" delay={0.07} />
           <StatCard label="Annual Savings" value={report.totalAnnualSavings >= 1000 ? `$${(report.totalAnnualSavings / 1000).toFixed(0)}K` : `$${report.totalAnnualSavings}`} sub="based on current spend" delay={0.14} />

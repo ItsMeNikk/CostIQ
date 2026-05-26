@@ -623,6 +623,8 @@ export default function AuditPage() {
 
   useEffect(() => {
     const saved = loadForm();
+    // SSR-safe hydration from localStorage; setState in effect is required.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setForm(saved);
     setLoaded(true);
   }, []);
@@ -792,7 +794,7 @@ export default function AuditPage() {
                     {/* Team size */}
                     <div>
                       <FieldLabel>Team size</FieldLabel>
-                      <div className="grid grid-cols-5 gap-2">
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                         {TEAM_SIZES.map((s) => (
                           <motion.button key={s.value} onClick={() => update({ teamSize: s.value })}
                             whileTap={{ scale: 0.96 }}
@@ -823,7 +825,7 @@ export default function AuditPage() {
                     {/* Monthly spend */}
                     <div>
                       <FieldLabel>Estimated monthly AI spend</FieldLabel>
-                      <div className="grid grid-cols-5 gap-2">
+                      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
                         {SPEND_RANGES.map((r) => {
                           const sel = form.spendRange === r.value;
                           return (
