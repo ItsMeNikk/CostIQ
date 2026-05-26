@@ -6,17 +6,17 @@ CostIQ is an AI spend auditing platform for startups and engineering teams. Ente
 
 🔗 **Live demo:** [cost-iq-plum.vercel.app](https://cost-iq-plum.vercel.app/)
 
-![CostIQ landing page](screenshots/hero.png)
+![CostIQ landing page](Screenshots/hero.png)
 
 ## What it looks like
 
 **Sample audit report** — preview shown to visitors before they run their own.
 
-![Sample report](screenshots/sample-report.png)
+![Sample report](Screenshots/sample-report.png)
 
 **Real audit report** — generated after the user fills out the form.
 
-![Audit report](screenshots/audit-report.png)
+![Audit report](Screenshots/audit-report.png)
 
 ## Features
 
