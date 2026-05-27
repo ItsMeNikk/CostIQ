@@ -147,12 +147,14 @@ export default function Pricing() {
                   {plan.cta}
                 </a>
               ) : (
-                <span
-                  title="Coming soon"
-                  className={`btn-label-xs block text-center px-5 py-3 rounded-xl cursor-not-allowed opacity-50 border border-[#48cae4]/40 text-[#03045e]/70`}
-                >
-                  {plan.cta}
-                </span>
+                <div className="relative group">
+                  <span className="btn-label-xs block text-center px-5 py-3 rounded-xl cursor-not-allowed opacity-50 border border-[#48cae4]/40 text-[#03045e]/70">
+                    {plan.cta}
+                  </span>
+                  <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0D2137] px-2 py-1 text-[11px] text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                    Coming soon
+                  </span>
+                </div>
               )}
             </motion.div>
           ))}

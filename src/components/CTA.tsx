@@ -93,12 +93,14 @@ export default function CTA() {
               <span>Talk to sales</span>
             </motion.a>
           ) : (
-            <span
-              title="Coming soon"
-              className="btn-label group inline-flex items-center gap-3 px-8 py-4 rounded-[10px] text-[#03045e]/40 bg-white border border-[#03045e]/10 cursor-not-allowed opacity-50"
-            >
-              <span>Talk to sales</span>
-            </span>
+            <div className="relative group">
+              <span className="btn-label group inline-flex items-center gap-3 px-8 py-4 rounded-[10px] text-[#03045e]/40 bg-white border border-[#03045e]/10 cursor-not-allowed opacity-50">
+                <span>Talk to sales</span>
+              </span>
+              <span className="pointer-events-none absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-md bg-[#0D2137] px-2 py-1 text-[11px] text-white opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                Coming soon
+              </span>
+            </div>
           )}
         </motion.div>
 
