@@ -34,7 +34,7 @@ export default function Footer() {
 
         <div className="mt-10 pt-6 border-t border-white/10">
           <p className="text-[11px] text-white/30 tracking-wide">
-            &copy; 2025 CostIQ, Inc. All rights reserved.
+            &copy; 2026 CostIQ, Inc. All rights reserved.
           </p>
         </div>
       </div>
