@@ -69,10 +69,11 @@ export default function FAQ() {
             transition={{ duration: 0.5, delay: 0.2 }}
             className="text-[14px] sm:text-[15px] text-[#141414]/55 font-normal"
           >
-            Anything else? Email us at{" "}
-            <a href={`mailto:${SALES_EMAIL}`} className="text-[#141414] hover:underline font-medium">
-              {SALES_EMAIL}
-            </a>
+            {SALES_EMAIL ? (
+              <>Anything else? Email us at{" "}
+                <a href={`mailto:${SALES_EMAIL}`} className="text-[#141414] hover:underline font-medium">{SALES_EMAIL}</a>
+              </>
+            ) : "Anything else? Contact coming soon."}
           </motion.p>
         </div>
 

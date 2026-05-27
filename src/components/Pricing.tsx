@@ -36,7 +36,7 @@ const plans = [
       "Slack / email alerts",
     ],
     cta: "Get in touch",
-    href: `mailto:${SALES_EMAIL}?subject=CostIQ%20Pro`,
+    href: SALES_EMAIL ? `mailto:${SALES_EMAIL}?subject=CostIQ%20Pro` : null,
     highlight: false,
   },
 ];
@@ -135,16 +135,25 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <a
-                href={plan.href}
-                className={`btn-label-xs block text-center px-5 py-3 rounded-xl transition-all duration-200 hover:-translate-y-0.5 ${
-                  plan.highlight
-                    ? "bg-white text-[#141414] hover:shadow-lg active:translate-y-0"
-                    : "bg-[#90e0ef]/50 text-[#03045e]/70 hover:bg-[#141414] hover:text-white border border-[#48cae4]/40"
-                }`}
-              >
-                {plan.cta}
-              </a>
+              {plan.href ? (
+                <a
+                  href={plan.href}
+                  className={`btn-label-xs block text-center px-5 py-3 rounded-xl transition-all duration-200 hover:-translate-y-0.5 ${
+                    plan.highlight
+                      ? "bg-white text-[#141414] hover:shadow-lg active:translate-y-0"
+                      : "bg-[#90e0ef]/50 text-[#03045e]/70 hover:bg-[#141414] hover:text-white border border-[#48cae4]/40"
+                  }`}
+                >
+                  {plan.cta}
+                </a>
+              ) : (
+                <span
+                  title="Coming soon"
+                  className={`btn-label-xs block text-center px-5 py-3 rounded-xl cursor-not-allowed opacity-50 border border-[#48cae4]/40 text-[#03045e]/70`}
+                >
+                  {plan.cta}
+                </span>
+              )}
             </motion.div>
           ))}
         </div>

@@ -83,14 +83,23 @@ export default function CTA() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M13 7l5 5m0 0l-5 5m5-5H6" />
             </svg>
           </motion.a>
-          <motion.a
-            href={`mailto:${SALES_EMAIL}?subject=CostIQ%20Pro`}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            className="btn-label group inline-flex items-center gap-3 px-8 py-4 rounded-[10px] text-[#03045e] bg-white hover:bg-[#f5f6f8] border border-[#03045e]/10 transition-colors duration-200"
-          >
-            <span>Talk to sales</span>
-          </motion.a>
+          {SALES_EMAIL ? (
+            <motion.a
+              href={`mailto:${SALES_EMAIL}?subject=CostIQ%20Pro`}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="btn-label group inline-flex items-center gap-3 px-8 py-4 rounded-[10px] text-[#03045e] bg-white hover:bg-[#f5f6f8] border border-[#03045e]/10 transition-colors duration-200"
+            >
+              <span>Talk to sales</span>
+            </motion.a>
+          ) : (
+            <span
+              title="Coming soon"
+              className="btn-label group inline-flex items-center gap-3 px-8 py-4 rounded-[10px] text-[#03045e]/40 bg-white border border-[#03045e]/10 cursor-not-allowed opacity-50"
+            >
+              <span>Talk to sales</span>
+            </span>
+          )}
         </motion.div>
 
         <motion.p

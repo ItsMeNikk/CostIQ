@@ -11,4 +11,5 @@ export const HERO_TRUST_LINE =
 export const FAQ_PRICING_ANSWER =
   `Starter is free for teams with ${STARTER_SPEND_LIMIT} and includes a full savings report, PDF export, and shareable link. Pro uses custom pricing for larger teams that need multiple audits, historical tracking, and priority support — email hello@costiq.io to discuss Pro or Enterprise.`;
 
-export const SALES_EMAIL = "hello@costiq.io";
+// Set to an email string to enable contact buttons, or null to show "Coming soon"
+export const SALES_EMAIL: string | null = null;
