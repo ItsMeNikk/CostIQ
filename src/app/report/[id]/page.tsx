@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { runAudit, AuditReport, Recommendation, getProviderMeta } from "@/lib/audit-engine";
 import { hasUsableReportData } from "@/lib/audit-validation";
-import { resolveAccess, buildShareUrl, reportStorageKey, type AccessState } from "@/lib/share-token";
+import { resolveAccess, buildShareUrl, reportStorageKey, type AccessState, type StoredAuditData } from "@/lib/share-token";
 import EmailCaptureModal from "@/components/EmailCaptureModal";
 import LockedReportOverlay from "@/components/LockedReportOverlay";
 import ReportNotFoundState from "@/components/ReportNotFoundState";
@@ -758,20 +758,21 @@ export default function ReportPage() {
     const initial = resolveAccess(reportId, urlToken);
 
     if (initial.state === "not-found" && urlToken) {
-      // Data not in sessionStorage — fetch from DB using the share token
-      fetch(`/api/reports?id=${encodeURIComponent(reportId)}&share=${encodeURIComponent(urlToken)}`)
+      const controller = new AbortController();
+      fetch(`/api/reports?id=${encodeURIComponent(reportId)}&share=${encodeURIComponent(urlToken)}`, { signal: controller.signal })
         .then((r) => r.ok ? r.json() : Promise.reject(r.status))
-        .then((json: { ok: boolean; data?: unknown }) => {
+        .then((json: { ok: boolean; data?: StoredAuditData }) => {
           if (json.ok && json.data && typeof json.data === "object") {
             try {
               sessionStorage.setItem(reportStorageKey(reportId), JSON.stringify(json.data));
             } catch {}
-            setAccess(resolveAccess(reportId, urlToken));
+            setAccess({ state: "unlocked", data: { ...json.data, id: reportId, shareToken: urlToken } });
           } else {
             setAccess({ state: "not-found" });
           }
         })
-        .catch(() => setAccess({ state: "not-found" }));
+        .catch((err) => { if ((err as { name?: string })?.name !== "AbortError") setAccess({ state: "not-found" }); });
+      return () => controller.abort();
     } else {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: defer sessionStorage reads to post-mount
       setAccess(initial);
