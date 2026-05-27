@@ -8,7 +8,7 @@ export interface AuditEmailPayload {
   company?: string;
 }
 
-const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "CostIQ <onboarding@resend.dev>";
+const FROM_EMAIL = process.env.RESEND_FROM_EMAIL || "CostIQ <noreply@mailbotpay.click>";
 
 let cachedClient: Resend | null = null;
 
