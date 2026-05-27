@@ -6,7 +6,7 @@ import Link from "next/link";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { runAudit, AuditReport, Recommendation, getProviderMeta } from "@/lib/audit-engine";
 import { hasUsableReportData } from "@/lib/audit-validation";
-import { resolveAccess, buildShareUrl, type AccessState } from "@/lib/share-token";
+import { resolveAccess, buildShareUrl, reportStorageKey, type AccessState } from "@/lib/share-token";
 import EmailCaptureModal from "@/components/EmailCaptureModal";
 import LockedReportOverlay from "@/components/LockedReportOverlay";
 import ReportNotFoundState from "@/components/ReportNotFoundState";
@@ -754,8 +754,29 @@ export default function ReportPage() {
 
   useEffect(() => {
     if (!reportId) return;
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: defer sessionStorage reads to post-mount
-    setAccess(resolveAccess(reportId, urlToken));
+
+    const initial = resolveAccess(reportId, urlToken);
+
+    if (initial.state === "not-found" && urlToken) {
+      // Data not in sessionStorage — fetch from DB using the share token
+      fetch(`/api/reports?id=${encodeURIComponent(reportId)}&share=${encodeURIComponent(urlToken)}`)
+        .then((r) => r.ok ? r.json() : Promise.reject(r.status))
+        .then((json: { ok: boolean; data?: unknown }) => {
+          if (json.ok && json.data && typeof json.data === "object") {
+            try {
+              sessionStorage.setItem(reportStorageKey(reportId), JSON.stringify(json.data));
+            } catch {}
+            setAccess(resolveAccess(reportId, urlToken));
+          } else {
+            setAccess({ state: "not-found" });
+          }
+        })
+        .catch(() => setAccess({ state: "not-found" }));
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- client-only hydration: defer sessionStorage reads to post-mount
+      setAccess(initial);
+    }
+
     if (sessionStorage.getItem(MODAL_SEAL_PREFIX + reportId) === "1") {
       setModalSealed(true);
     } else {
